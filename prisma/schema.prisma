@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Un sito o repo ingerito, curato editorialmente
+model Site {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique // kebab-case dal nome, dedupe con suffisso numerico
+  sourceType  String // "url" | "git"
+  sourceUrl   String // URL del sito o del repo
+  status      String   @default("pending") // stato pipeline: pending | ingesting | analyzing | ready | failed
+  visibility  String   @default("draft") // stato editoriale: draft | published
+  featured    Boolean  @default(false)
+  error       String?
+
+  // Output dell'AI analysis
+  description String? // descrizione accurata generata dall'AI
+  techStack   Json? // ["Next.js", "GSAP", ...]
+  designInfo  Json? // palette, fonts, tokens rilevati
+  metadata    Json? // altre info (n. pagine, dimensione repo, ecc.)
+  screenshot  String? // URL screenshot full-page dell'homepage (solo sourceType "url")
+  cover       String? // URL immagine di copertina scelta manualmente (ha priorità sullo screenshot)
+  screenshots Json? // array di URL screenshot (per fonti future)
+  scrollScreenshots Json? // URL screenshot in sequenza di scroll dell'homepage (solo sourceType "url")
+  awwwardsUrl String? // URL della pagina Awwwards fornito manualmente dall'utente (override della discovery)
+  awwwards    Json? // dati estratti dalla pagina Awwwards (award, scores, tags, credits, gallery...)
+
+  documents   Document[]
+  components  Component[]
+  sources     Source[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Fonte esterna da cui un sito è stato scoperto/arricchito
+model Source {
+  id        String   @id @default(cuid())
+  siteId    String
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  type      String // "awwwards" | "manual" | "crawl" | "git" | ...
+  url       String
+  data      Json? // dati estratti dalla fonte (tags, award, credits...)
+  fetchedAt DateTime @default(now())
+
+  @@index([siteId])
+}
+
+// Domanda inviata alla chat pubblica (fake door test)
+model ChatIntent {
+  id        String   @id @default(cuid())
+  siteId    String
+  question  String
+  createdAt DateTime @default(now())
+
+  @@index([siteId])
+}
+
+// Contenuto grezzo normalizzato: una pagina crawlata o un file del repo
+model Document {
+  id     String @id @default(cuid())
+  siteId String
+  site   Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  path      String // URL della pagina o path del file nel repo
+  kind      String // "page" | "file"
+  content   String // markdown (pagine) o sorgente (file)
+  html      String? // HTML renderizzato (post-JS), solo per il documento homepage
+  summary   String? // riassunto AI del singolo documento
+  tokens    Int? // stima token, utile per il chunking
+
+  // I chunk embeddati vivono in Qdrant; qui teniamo il riferimento
+  qdrantIds Json? // array di point id in Qdrant
+
+  createdAt DateTime @default(now())
+
+  @@index([siteId])
+  @@unique([siteId, path])
+}
+
+// Componente UI identificato dall'AI durante l'analisi
+model Component {
+  id     String @id @default(cuid())
+  siteId String
+  site   Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  name        String // "Hero", "Navbar", "PricingCard"...
+  kind        String // "layout" | "section" | "ui" | "animation"
+  description String // cosa fa, come si comporta
+  origin      String  @default("ai") // "ai" | "source": dedotto dall'analisi o importato da fonte esterna
+  cover       String? // URL foto/video di copertina del componente
+  coverType   String? // "image" | "video"
+  sourcePath  String? // documento da cui proviene
+  code        String? // snippet estratto
+  prompt      String? // prompt generato per ricreare il componente via LLM
+  deps        Json? // dipendenze rilevate ["gsap", "framer-motion"]
+
+  createdAt DateTime @default(now())
+
+  @@index([siteId])
+}
