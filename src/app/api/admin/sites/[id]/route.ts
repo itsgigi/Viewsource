@@ -29,13 +29,13 @@ export async function GET(
   });
 
   if (!site) {
-    return NextResponse.json({ error: "Sito non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
 
   return NextResponse.json(site);
 }
 
-// Publish/unpublish (e featured) dal pannello admin
+// Publish/unpublish (and featured) from the admin panel
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -52,7 +52,7 @@ export async function PATCH(
     .catch(() => null);
 
   if (!site) {
-    return NextResponse.json({ error: "Sito non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
 
   return NextResponse.json(site);

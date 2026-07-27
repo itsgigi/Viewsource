@@ -20,9 +20,9 @@ function parseJson<T>(value: unknown, fallback: T): T {
   }
 }
 
-// Un <video> live nell'harness non sarà mai allo stesso istante della ground
-// truth congelata: mascheriamo la sua regione dal pixelmatch (vedi
-// src/lib/render/diff.ts) invece di lasciarlo penalizzare un codice corretto.
+// A live <video> in the harness will never be at the same instant as the
+// frozen ground truth: we mask its region out of the pixelmatch (see
+// src/lib/render/diff.ts) instead of letting it penalize otherwise-correct code.
 function videoMaskRect(section: Pick<Section, "annotations" | "mediaAssets">): MaskRect | undefined {
   const annotations = parseJson<Annotations | null>(section.annotations, null);
   if (annotations?.mediaType !== "video") return undefined;
@@ -38,13 +38,13 @@ export const DIFF_THRESHOLD = 0.1;
 export const MAX_AUTO_ITERATIONS = 3;
 
 const AUTO_LOOP_FEEDBACK =
-  "Queste zone evidenziate nell'immagine diff non corrispondono all'originale: correggile.";
+  "These highlighted areas in the diff image don't match the original: fix them.";
 
 export interface Iteration {
   code: string;
   diffScore: number;
   feedback: string | null;
-  /** Estensione rispetto al minimo di spec: evita un re-render solo per mostrare/ripristinare lo storico. */
+  /** Extension beyond the spec minimum: avoids a re-render just to show/restore history. */
   renderScreenshot: string;
   diffScreenshot: string;
   createdAt: string;
@@ -66,12 +66,13 @@ async function renderAndDiff(
 ) {
   const renderedBuffer = await renderComponent(code, { width: SECTION_VIEWPORT_WIDTH });
 
-  // sourceScreenshot è nullable in schema (le sezioni del nuovo flusso studio
-  // non hanno ground truth DOM catturata, vedi src/lib/reconstruction), ma
-  // questo loop opera SOLO su sezioni del vecchio flusso auto (dismesso, non
-  // cancellato), che lo popolano sempre in cattura — vedi src/lib/sections/capture.ts.
+  // sourceScreenshot is nullable in the schema (sections from the new studio
+  // flow have no captured DOM ground truth, see src/lib/reconstruction), but
+  // this loop operates ONLY on sections from the old auto flow (deprecated,
+  // not deleted), which always populate it at capture time — see
+  // src/lib/sections/capture.ts.
   if (!section.sourceScreenshot) {
-    throw new Error("Sezione senza sourceScreenshot: non è una ground truth del vecchio flusso di cattura automatica.");
+    throw new Error("Section without sourceScreenshot: not a ground truth from the old automatic capture flow.");
   }
   const originalRes = await fetch(section.sourceScreenshot);
   const originalBuffer = Buffer.from(await originalRes.arrayBuffer());
@@ -101,12 +102,13 @@ async function appendIteration(sectionId: string, current: Section, iteration: I
 }
 
 /**
- * Loop automatico (Fase D): genera → render → diff, e se `diffScore` resta
- * sopra soglia rimanda al modello ground truth + ultimo codice + immagine-diff,
- * fino a MAX_AUTO_ITERATIONS. Ogni tentativo viene registrato in `iterations`.
+ * Automatic loop (Phase D): generate → render → diff, and if `diffScore`
+ * stays above threshold, feed the model ground truth + last code +
+ * diff image again, up to MAX_AUTO_ITERATIONS. Every attempt is recorded
+ * in `iterations`.
  */
 export async function runAutoReconstructionLoop(sectionId: string): Promise<Section> {
-  assertLocalOnly("La ricostruzione automatica");
+  assertLocalOnly("Automatic reconstruction");
 
   let section = await prisma.section.findUniqueOrThrow({ where: { id: sectionId } });
 
@@ -124,14 +126,14 @@ export async function runAutoReconstructionLoop(sectionId: string): Promise<Sect
     try {
       result = await renderAndDiff(code, section, `sections/${section.id}-auto${attempts}`);
     } catch (err) {
-      // Un render fallito (es. glitch del dev server, componente che monta
-      // vuoto) consuma un tentativo ma NON abbandona la sezione: il prossimo
-      // giro riceve l'errore come feedback e riprova, invece di far fallire
-      // l'intera sezione al primo intoppo transiente.
+      // A failed render (e.g. dev server glitch, component that mounts
+      // empty) consumes an attempt but does NOT abandon the section: the
+      // next round receives the error as feedback and retries, instead of
+      // failing the whole section on the first transient hiccup.
       lastRenderError = err instanceof Error ? err : new Error(String(err));
       previousCode = code;
       diffPngUrl = undefined;
-      feedback = `Il tentativo precedente non si è renderizzato correttamente: ${lastRenderError.message}. Assicurati che il componente produca un layout visibile (niente contenitori ad altezza 0, niente elementi fuori schermo), usando solo classi Tailwind valide.`;
+      feedback = `The previous attempt didn't render correctly: ${lastRenderError.message}. Make sure the component produces a visible layout (no zero-height containers, no off-screen elements), using only valid Tailwind classes.`;
       attempts++;
       continue;
     }
@@ -154,8 +156,8 @@ export async function runAutoReconstructionLoop(sectionId: string): Promise<Sect
   }
 
   if (lastRenderError && !Number.isFinite(diffScore)) {
-    // Tutti i tentativi sono falliti al render: nessuna iterazione valida da
-    // mostrare, meglio propagare l'errore reale che tornare una sezione muta.
+    // All attempts failed to render: no valid iteration to show, better to
+    // propagate the real error than return a mute section.
     throw lastRenderError;
   }
 
@@ -163,11 +165,11 @@ export async function runAutoReconstructionLoop(sectionId: string): Promise<Sect
 }
 
 /**
- * Un'unica iterazione guidata da feedback admin in linguaggio naturale
- * (pannello sezione). Nessun loop automatico: l'admin ri-clicca per iterare.
+ * A single iteration driven by admin feedback in natural language (section
+ * panel). No automatic loop: the admin clicks again to iterate.
  */
 export async function regenerateWithFeedback(sectionId: string, feedback: string): Promise<Section> {
-  assertLocalOnly("La rigenerazione");
+  assertLocalOnly("Regeneration");
 
   const section = await prisma.section.findUniqueOrThrow({ where: { id: sectionId } });
   const iterations = parseIterations(section);
@@ -191,12 +193,12 @@ export async function regenerateWithFeedback(sectionId: string, feedback: string
   });
 }
 
-/** Ripristina un tentativo storico come corrente, senza toccare `iterations`. */
+/** Restores a historical attempt as current, without touching `iterations`. */
 export async function restoreIteration(sectionId: string, index: number): Promise<Section> {
   const section = await prisma.section.findUniqueOrThrow({ where: { id: sectionId } });
   const iterations = parseIterations(section);
   const target = iterations[index];
-  if (!target) throw new Error("Iterazione non trovata");
+  if (!target) throw new Error("Iteration not found");
 
   return prisma.section.update({
     where: { id: sectionId },

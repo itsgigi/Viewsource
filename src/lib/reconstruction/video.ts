@@ -25,12 +25,12 @@ export async function saveHumanVideo(
 }
 
 /**
- * Video scriptato (Playwright, Fase 1a): scroll a velocità costante
- * dall'alto in basso, senza cursore, riproducibile — complementare al video
- * umano. Gira SOLO in locale (Playwright).
+ * Scripted video (Playwright, Phase 1a): constant-speed scroll from top to
+ * bottom, no cursor, reproducible — complements the human video. Runs
+ * LOCAL ONLY (Playwright).
  */
 export async function captureScriptedVideo(slug: string, sourceUrl: string): Promise<string> {
-  assertLocalOnly("La registrazione del video scriptato");
+  assertLocalOnly("Scripted video recording");
   setRunning(slug, { stage: "recording-scripted" });
 
   try {
@@ -48,9 +48,9 @@ export async function captureScriptedVideo(slug: string, sourceUrl: string): Pro
       await page.goto(sourceUrl, { waitUntil: "networkidle", timeout: 60_000 });
       await page.waitForTimeout(1_000);
 
-      // Scroll continuo a velocità costante (non a step, come il filmstrip
-      // esistente in src/lib/ingest/capture.ts): qui serve un video fluido,
-      // non frame discreti.
+      // Continuous constant-speed scroll (not step-wise, like the existing
+      // filmstrip in src/lib/ingest/capture.ts): here we need a smooth
+      // video, not discrete frames.
       const scrollHeight = await page.evaluate(() => document.body.scrollHeight);
       const durationMs = Math.min(20_000, Math.max(6_000, scrollHeight * 4));
       const steps = 120;

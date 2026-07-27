@@ -3,13 +3,13 @@ import type { Browser, Page } from "playwright";
 import { reconstructionDir } from "./paths";
 
 /**
- * Generalizzazione di src/lib/render/index.ts: invece di un unico harness
- * condiviso per un componente alla volta, uno per-slug persistente rootato
- * su /reconstructions/<slug>/ (che è già di per sé un piccolo progetto Vite —
- * vedi ensureScaffold in ./paths). Serve sia la preview live con HMR (Fase 4,
- * <iframe> nella route admin) sia gli screenshot Playwright (Verify Fase 4,
- * pubblicazione Fase 6). Gira SOLO in locale/admin, stessa convenzione di
- * src/lib/local-only.ts.
+ * Generalization of src/lib/render/index.ts: instead of a single harness
+ * shared for one component at a time, a persistent per-slug one rooted at
+ * /reconstructions/<slug>/ (which is already a small Vite project in its
+ * own right — see ensureScaffold in ./paths). Serves both the live preview
+ * with HMR (Phase 4, <iframe> in the admin route) and the Playwright
+ * screenshots (Verify Phase 4, publish Phase 6). Runs LOCAL/ADMIN ONLY,
+ * same convention as src/lib/local-only.ts.
  */
 
 const CAN_RENDER = !process.env.VERCEL;
@@ -27,7 +27,7 @@ let lastPageError: string | null = null;
 
 export async function ensureStudioServer(slug: string): Promise<{ url: string }> {
   if (!CAN_RENDER) {
-    throw new Error('Lo studio di ricostruzione richiede l\'ambiente locale ("npm run dev"): non è disponibile su Vercel.');
+    throw new Error('The reconstruction studio requires the local environment ("npm run dev"): it isn\'t available on Vercel.');
   }
 
   const existing = servers.get(slug);

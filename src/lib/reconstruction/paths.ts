@@ -2,10 +2,10 @@ import path from "node:path";
 import fs from "node:fs/promises";
 
 /**
- * Studio di ricostruzione assistita (Viewsource v2): tutto il materiale di
- * lavoro vive su disco sotto /reconstructions/<slug>/, MAI nel DB — è
- * l'unica fonte di verità (vedi spec Fase 3-6). Il DB (`Section`) è solo una
- * proiezione popolata da `publish` (src/lib/reconstruction/publish.ts).
+ * Assisted reconstruction studio (Viewsource v2): all working material
+ * lives on disk under /reconstructions/<slug>/, NEVER in the DB — it's the
+ * single source of truth (see spec Phase 3-6). The DB (`Section`) is only
+ * a projection populated by `publish` (src/lib/reconstruction/publish.ts).
  */
 
 export const RECONSTRUCTIONS_ROOT = path.join(process.cwd(), "reconstructions");
@@ -142,11 +142,11 @@ const INDEX_HTML = `<!doctype html>
 
 const STYLES_CSS = `@import "tailwindcss";\n`;
 
-// import.meta.glob permette di montare una singola sezione per nome file a
-// runtime (Fase 4 Verify, Fase 6 screenshot di pubblicazione) senza un
-// import dinamico per-slug lato Next (vedi piano — evitiamo di scommettere
-// sul supporto Turbopack a import(`...${variabile}...`)): è una feature
-// nativa e stabile di Vite, con HMR incluso.
+// import.meta.glob lets us mount a single section by filename at runtime
+// (Phase 4 Verify, Phase 6 publish screenshot) without a per-slug dynamic
+// import on the Next side (see plan — we avoid betting on Turbopack's
+// support for import(`...${variable}...`)): it's a native, stable Vite
+// feature, with HMR included.
 const MAIN_TSX = `import { createRoot } from "react-dom/client";
 import Page from "./page";
 
@@ -159,7 +159,7 @@ async function main() {
 
   if (section) {
     const loader = sectionModules[\`./sections/\${section}\`];
-    if (!loader) throw new Error(\`Sezione non trovata nello studio: \${section}\`);
+    if (!loader) throw new Error(\`Section not found in the studio: \${section}\`);
     const mod = (await loader()) as { default: React.ComponentType };
     root.render(<mod.default />);
   } else {
@@ -177,16 +177,16 @@ main();
 const PAGE_TSX_PLACEHOLDER = `export default function Page() {
   return (
     <main className="p-12 text-center text-zinc-400">
-      Nessuna sezione generata ancora — esegui "Genera demo" (Fase 3).
+      No section generated yet — run "Generate demo" (Phase 3).
     </main>
   );
 }
 `;
 
 /**
- * Crea la cartella /reconstructions/<slug>/ con lo scaffold minimo (Fase 1):
- * idempotente, non sovrascrive file già esistenti (in particolare non
- * tocca mai page.tsx/sections/ una volta che l'admin ci ha messo mano).
+ * Creates the /reconstructions/<slug>/ folder with the minimal scaffold
+ * (Phase 1): idempotent, doesn't overwrite existing files (in particular
+ * it never touches page.tsx/sections/ once the admin has hand-edited them).
  */
 export async function ensureScaffold(
   slug: string,

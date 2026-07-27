@@ -14,8 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Site Ingest",
-  description: "Ingest any site. Extract its components.",
+  title: "Viewsource",
+  description: "Recreate. Learn. Own the code.",
+  icons: {
+    icon: "/logovs.png",
+    shortcut: "/logovs.png",
+    apple: "/logovs.png",
+  },
 };
 
 export default function RootLayout({
@@ -32,10 +37,10 @@ export default function RootLayout({
     </html>
   );
 
-  // Auth utenti pubblici (Clerk) separata dal cookie admin. Se le chiavi
-  // Clerk non sono configurate, l'app resta comunque buildabile e usabile
-  // (solo le funzionalità legate all'unlock/checkout non funzionano finché
-  // non vengono aggiunte NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY + CLERK_SECRET_KEY).
+  // Public user auth (Clerk), separate from the admin cookie. If the Clerk
+  // keys aren't configured, the app still builds and works fine (only the
+  // unlock/checkout features won't work until NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  // + CLERK_SECRET_KEY are added).
   if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) return markup;
 
   return <ClerkProvider>{markup}</ClerkProvider>;

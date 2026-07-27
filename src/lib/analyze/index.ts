@@ -15,57 +15,57 @@ const chatModel = new ChatOpenAI({
 });
 
 const embeddings = new OpenAIEmbeddings({
-  model: "text-embedding-3-small", // 1536 dim, allineato a VECTOR_SIZE in qdrant.ts
+  model: "text-embedding-3-small", // 1536 dim, matches VECTOR_SIZE in qdrant.ts
 });
 
-// Quanto corpus passare al modello per l'analisi (in caratteri)
+// How much corpus to pass to the model for analysis (in characters)
 const MAX_CORPUS_CHARS = 60_000;
 
-// ---------- Schema output analisi ----------
+// ---------- Analysis output schema ----------
 
 const analysisSchema = z.object({
   description: z
     .string()
     .describe(
-      "Descrizione accurata del progetto in italiano: cosa fa, per chi, come è costruito, cosa lo caratterizza visivamente e tecnicamente. 2-4 paragrafi."
+      "Accurate project description in English: what it does, for whom, how it's built, what characterizes it visually and technically. 2-4 paragraphs."
     ),
   techStack: z
     .array(z.string())
-    .describe("Tecnologie, framework e librerie rilevate"),
+    .describe("Detected technologies, frameworks, and libraries"),
   designInfo: z
     .object({
-      palette: z.array(z.string()).describe("Colori principali (hex se rilevabili)"),
-      fonts: z.array(z.string()).describe("Font utilizzati"),
-      notes: z.string().describe("Note su stile visivo, animazioni, layout"),
+      palette: z.array(z.string()).describe("Main colors (hex if detectable)"),
+      fonts: z.array(z.string()).describe("Fonts used"),
+      notes: z.string().describe("Notes on visual style, animations, layout"),
     })
-    .describe("Informazioni di design rilevate"),
+    .describe("Detected design information"),
   components: z
     .array(
       z.object({
         name: z
           .string()
           .describe(
-            "Nome del componente, specifico per ciò che fa: 'Hero parallax intro', 'Barra di progresso allo scroll' — mai generico come 'Animation'"
+            "Component name, specific to what it does: 'Hero parallax intro', 'Scroll progress bar' — never generic like 'Animation'"
           ),
         kind: z.enum(["layout", "section", "ui", "animation"]),
         description: z
           .string()
           .describe(
-            "Cosa fa, come si comporta, cosa lo rende riutilizzabile. Per kind 'animation': descrivi l'effetto osservato (cosa si muove, quando, come) e la tecnica probabile."
+            "What it does, how it behaves, what makes it reusable. For kind 'animation': describe the observed effect (what moves, when, how) and the likely technique."
           ),
         sourcePath: z
           .string()
           .describe(
-            "Path del file, URL della pagina, o — quando il componente corrisponde a una SEZIONE CATTURATA — il suo selettore esatto così com'è scritto dopo 'selettore=' nel blocco, per poter recuperare l'HTML/CSS reale in fase di estrazione"
+            "File path, page URL, or — when the component matches a CAPTURED SECTION — its exact selector as written after 'selector=' in the block, to be able to retrieve the real HTML/CSS at extraction time"
           ),
       })
     )
     .describe(
-      "TUTTI i componenti UI identificati e potenzialmente estraibili: layout (shell, header, footer), section (hero, pricing, feature...), ui (bottoni, selettori, card...) E animation. Per un sito tipico aspettati 8-14 componenti totali: ogni sezione visibile negli screenshot è un candidato section, ogni controllo interattivo un candidato ui. Per le animation: crea un componente SEPARATO per OGNI effetto di scroll/motion distinto osservato negli screenshot in sequenza o nei segnali di animazione (es. parallax dell'hero, elemento sticky che si trasforma, barra/indicatore di progresso, reveal di sezione, marquee, slider) — non accorparli. Le animation si AGGIUNGONO agli altri componenti, non li sostituiscono."
+      "ALL identified UI components that are potentially extractable: layout (shell, header, footer), section (hero, pricing, feature...), ui (buttons, selectors, cards...) AND animation. For a typical site expect 8-14 total components: every section visible in the screenshots is a section candidate, every interactive control a ui candidate. For animation: create a SEPARATE component for EVERY distinct scroll/motion effect observed in the sequential screenshots or in the animation signals (e.g. hero parallax, sticky element that transforms, progress/fill bar, section reveal, marquee, slider) — don't merge them. Animations are ADDED to the other components, not a replacement for them."
     ),
 });
 
-// ---------- Analisi ----------
+// ---------- Analysis ----------
 
 export async function analyzeSite(siteId: string) {
   const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
@@ -82,14 +82,14 @@ export async function analyzeSite(siteId: string) {
 
   let corpus = buildCorpus(docs);
   if (animationSignals) {
-    corpus += `\n\n===== SEGNALI DI ANIMAZIONE (HTML renderizzato dell'homepage) =====\n${animationSignals}`;
+    corpus += `\n\n===== ANIMATION SIGNALS (rendered homepage HTML) =====\n${animationSignals}`;
   }
 
   const capturedSections = (site.capturedSections as CapturedSectionInfo[] | null) ?? [];
   if (capturedSections.length > 0) {
-    corpus += `\n\n===== SEZIONI CATTURATE DAL DOM REALE (Playwright, HTML+CSS effettivi renderizzati) =====`;
+    corpus += `\n\n===== SECTIONS CAPTURED FROM THE REAL DOM (Playwright, actual rendered HTML+CSS) =====`;
     for (const s of capturedSections.slice(0, 12)) {
-      corpus += `\n\n--- SEZIONE selettore="${s.selector}" ---\nHTML:\n${s.html.slice(0, 3_000)}\nCSS computato (elementi principali):\n${s.css.slice(0, 1_500)}`;
+      corpus += `\n\n--- SECTION selector="${s.selector}" ---\nHTML:\n${s.html.slice(0, 3_000)}\nComputed CSS (main elements):\n${s.css.slice(0, 1_500)}`;
     }
   }
 
@@ -106,13 +106,13 @@ export async function analyzeSite(siteId: string) {
   } | null;
 
   if (awwwards) {
-    corpus += `\n\n===== AWWWARDS (dati curati, fonte autorevole) =====
-Premio: ${awwwards.award ?? "n/d"}${awwwards.awardDate ? ` (${awwwards.awardDate})` : ""}
-Punteggi giuria: ${JSON.stringify(awwwards.scores ?? {})}
-Tag (categorie + tecnologie): ${(awwwards.tags ?? []).join(", ")}
+    corpus += `\n\n===== AWWWARDS (curated data, authoritative source) =====
+Award: ${awwwards.award ?? "n/a"}${awwwards.awardDate ? ` (${awwwards.awardDate})` : ""}
+Jury scores: ${JSON.stringify(awwwards.scores ?? {})}
+Tags (categories + technologies): ${(awwwards.tags ?? []).join(", ")}
 Palette: ${(awwwards.palette ?? []).join(", ")}
-Crediti: ${(awwwards.credits ?? []).map((c) => c.name).join(", ")}
-${awwwards.description ? `Descrizione: ${awwwards.description}` : ""}`;
+Credits: ${(awwwards.credits ?? []).map((c) => c.name).join(", ")}
+${awwwards.description ? `Description: ${awwwards.description}` : ""}`;
   }
 
   const structured = chatModel.withStructuredOutput(analysisSchema, {
@@ -128,19 +128,19 @@ ${awwwards.description ? `Descrizione: ${awwwards.description}` : ""}`;
   const userContent =
     images.length > 0
       ? [
-          { type: "text" as const, text: `Analizza questo progetto:\n\n${corpus}` },
+          { type: "text" as const, text: `Analyze this project:\n\n${corpus}` },
           ...images.map((url) => ({
             type: "image_url" as const,
             image_url: { url },
           })),
         ]
-      : `Analizza questo progetto:\n\n${corpus}`;
+      : `Analyze this project:\n\n${corpus}`;
 
   const result = await structured.invoke([
     {
       role: "system",
       content:
-        "Sei un analista tecnico esperto di frontend. Analizza il contenuto di un sito web o repository e produci un'analisi strutturata, concreta e accurata. Basati solo su ciò che vedi nel corpus, non inventare. Se è presente uno screenshot dell'homepage, usalo come fonte primaria per palette colori e font reali (osservali direttamente nell'immagine); il testo markdown serve solo da contesto aggiuntivo.\n\nSe il corpus contiene un blocco SEZIONI CATTURATE DAL DOM REALE, trattalo come fonte primaria per la struttura: è HTML e CSS computato realmente renderizzati dal browser (Playwright), non testo derivato. Fai corrispondere ogni componente strutturale (layout/section/ui) alla sezione catturata pertinente quando esiste, e usane il selettore come sourcePath.\n\nNel campo components devi elencare DUE famiglie di componenti, entrambe obbligatorie:\n1. Componenti strutturali (kind layout, section, ui): le sezioni e gli elementi riutilizzabili della pagina (hero, header, footer, card, selettori, slider...).\n2. Componenti animation: se sono fornite più immagini in sequenza, rappresentano lo scorrimento della pagina dall'alto verso il basso — usale per individuare effetti legati allo scroll (parallax, elementi sticky che si trasformano, progress/fill bar, reveal, overlay...). Tratta OGNI effetto scroll/motion distinto come un componente SEPARATO con kind \"animation\", nominato in modo specifico (es. 'Hero parallax intro', 'Barra di progresso allo scroll'), usando i SEGNALI DI ANIMAZIONE nel corpus come evidenza tecnica quando disponibili.\n\nUn'analisi che contiene solo animation o solo componenti strutturali è incompleta.\n\nSe il corpus contiene un blocco AWWWARDS, trattalo come fonte autorevole curata da esseri umani: i suoi tag tecnologici hanno priorità per techStack e la sua palette ha priorità per designInfo.palette.",
+        "You are an expert frontend technical analyst. Analyze the content of a website or repository and produce a structured, concrete, and accurate analysis. Base yourself only on what you see in the corpus, don't make things up. If a homepage screenshot is present, use it as the primary source for real color palette and fonts (observe them directly in the image); the markdown text is only additional context.\n\nIf the corpus contains a SECTIONS CAPTURED FROM THE REAL DOM block, treat it as the primary source for structure: it's HTML and computed CSS actually rendered by the browser (Playwright), not derived text. Match each structural component (layout/section/ui) to the relevant captured section when one exists, and use its selector as sourcePath.\n\nIn the components field you must list TWO families of components, both mandatory:\n1. Structural components (kind layout, section, ui): the page's sections and reusable elements (hero, header, footer, card, selectors, slider...).\n2. Animation components: if multiple images are provided in sequence, they represent the page scrolling from top to bottom — use them to identify scroll-linked effects (parallax, sticky elements that transform, progress/fill bar, reveal, overlay...). Treat EVERY distinct scroll/motion effect as a SEPARATE component with kind \"animation\", named specifically (e.g. 'Hero parallax intro', 'Scroll progress bar'), using the ANIMATION SIGNALS in the corpus as technical evidence when available.\n\nAn analysis that contains only animation or only structural components is incomplete.\n\nIf the corpus contains an AWWWARDS block, treat it as an authoritative source curated by humans: its technology tags take priority for techStack and its palette takes priority for designInfo.palette.",
     },
     {
       role: "user",
@@ -157,7 +157,7 @@ ${awwwards.description ? `Descrizione: ${awwwards.description}` : ""}`;
         designInfo: result.designInfo,
       },
     }),
-    // ri-analisi: pulisci i componenti precedenti
+    // re-analysis: clear the previous components
     prisma.component.deleteMany({ where: { siteId } }),
     prisma.component.createMany({
       data: result.components.map((c) => ({ siteId, ...c })),
@@ -170,8 +170,8 @@ function normalizeUrl(url: string): string {
 }
 
 /**
- * Costruisce il corpus dando priorità ai file più informativi,
- * troncando per stare nel budget.
+ * Builds the corpus giving priority to the most informative files,
+ * truncating to stay within budget.
  */
 function buildCorpus(
   docs: { path: string; kind: string; content: string }[]
@@ -207,7 +207,7 @@ const splitter = new RecursiveCharacterTextSplitter({
 export async function embedSite(siteId: string) {
   await ensureCollection();
 
-  // ri-embedding: rimuovi i vecchi point del progetto
+  // re-embedding: remove the project's old points
   await qdrant.delete(COLLECTION, {
     filter: {
       must: [{ key: "siteId", match: { value: siteId } }],

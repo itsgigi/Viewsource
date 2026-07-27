@@ -59,12 +59,12 @@ type CompareView = "render" | "diff";
 
 const ANIMATION_OPTIONS: { value: AnimationTag; label: string }[] = [
   { value: "reveal-on-scroll", label: "Reveal on scroll" },
-  { value: "parallax", label: "Parallasse" },
-  { value: "content-swap", label: "Swap di contenuto" },
+  { value: "parallax", label: "Parallax" },
+  { value: "content-swap", label: "Content swap" },
   { value: "pin-sticky", label: "Pin / sticky" },
   { value: "hover-effect", label: "Hover effect" },
-  { value: "custom-cursor", label: "Cursore custom" },
-  { value: "none", label: "Nessuna" },
+  { value: "custom-cursor", label: "Custom cursor" },
+  { value: "none", label: "None" },
 ];
 
 export default function SectionDetailPage() {
@@ -75,8 +75,8 @@ export default function SectionDetailPage() {
   const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Annotazione HITL (Fase 5b/5c) — inizializzata dai valori salvati appena
-  // la sezione carica, poi editata liberamente prima di "Segna pronta".
+  // HITL annotation (Phase 5b/5c) — initialized from saved values as soon
+  // as the section loads, then freely edited before "Mark ready".
   const [mediaType, setMediaType] = useState<MediaType>("none");
   const [animations, setAnimations] = useState<AnimationTag[]>([]);
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
@@ -117,7 +117,7 @@ export default function SectionDetailPage() {
         body: JSON.stringify({ annotations }),
       });
       if (!res1.ok) {
-        setError((await res1.json().catch(() => null))?.error ?? "Salvataggio annotazione fallito");
+        setError((await res1.json().catch(() => null))?.error ?? "Failed to save annotation");
         return;
       }
       const res2 = await fetch(`/api/admin/sections/${sectionId}`, {
@@ -126,7 +126,7 @@ export default function SectionDetailPage() {
         body: JSON.stringify({ motionDescription }),
       });
       if (!res2.ok) {
-        setError((await res2.json().catch(() => null))?.error ?? "Salvataggio descrizione fallito");
+        setError((await res2.json().catch(() => null))?.error ?? "Failed to save description");
         return;
       }
       const res3 = await fetch(`/api/admin/sections/${sectionId}`, {
@@ -152,13 +152,13 @@ export default function SectionDetailPage() {
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) {
-        setError(body?.error ?? "Rigenerazione fallita");
+        setError(body?.error ?? "Regeneration failed");
       } else {
         setSection(body);
         setFeedback("");
       }
     } catch {
-      setError("Rigenerazione fallita");
+      setError("Regeneration failed");
     } finally {
       setRegenerating(false);
     }
@@ -183,7 +183,7 @@ export default function SectionDetailPage() {
   }
 
   if (!section) {
-    return <div className="p-8 text-sm text-gray-500">Caricamento…</div>;
+    return <div className="p-8 text-sm text-gray-500">Loading…</div>;
   }
 
   const lastDiffScreenshot = section.iterations[section.iterations.length - 1]?.diffScreenshot ?? null;
@@ -192,7 +192,7 @@ export default function SectionDetailPage() {
   return (
     <div className="mx-auto max-w-6xl p-8">
       <Link href={`/admin/sites/${id}`} className="text-sm text-gray-500 hover:text-gray-800">
-        ← Torna alle sezioni
+        ← Back to sections
       </Link>
 
       <div className="mt-4 flex items-center justify-between">
@@ -211,13 +211,13 @@ export default function SectionDetailPage() {
               onClick={() => setStatus("rejected")}
               className="rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
             >
-              Rigetta
+              Reject
             </button>
             <button
               onClick={() => setStatus("approved")}
               className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
             >
-              Approva
+              Approve
             </button>
           </div>
         )}
@@ -228,13 +228,13 @@ export default function SectionDetailPage() {
       {section.status === "captured" && (
         <div className="mt-6 rounded-lg border border-violet-200 bg-violet-50/40 p-4">
           <p className="mb-3 text-sm font-medium text-violet-900">
-            Revisione HITL — richiesta prima di poter generare questa sezione
+            HITL review — required before this section can be generated
           </p>
 
           {section.filmstrip && section.filmstrip.length > 0 && (
             <div className="mb-4">
               <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-400">
-                Filmstrip di scroll ({section.filmstrip.length} frame)
+                Scroll filmstrip ({section.filmstrip.length} frames)
               </p>
               <div className="flex gap-2 overflow-x-auto">
                 {section.filmstrip.map((f, i) => (
@@ -248,7 +248,7 @@ export default function SectionDetailPage() {
               </div>
               {section.detectedLibs && section.detectedLibs.length > 0 && (
                 <p className="mt-1 text-xs text-gray-500">
-                  Librerie rilevate: {section.detectedLibs.join(", ")}
+                  Detected libraries: {section.detectedLibs.join(", ")}
                 </p>
               )}
             </div>
@@ -257,21 +257,21 @@ export default function SectionDetailPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-gray-600">Tipo media</label>
+                <label className="text-xs font-medium text-gray-600">Media type</label>
                 <select
                   value={mediaType}
                   onChange={(e) => setMediaType(e.target.value as MediaType)}
                   className="mt-1 block w-full rounded-md border border-gray-200 p-1.5 text-sm"
                 >
-                  <option value="none">Nessuno</option>
-                  <option value="image">Immagine</option>
+                  <option value="none">None</option>
+                  <option value="image">Image</option>
                   <option value="video">Video</option>
                   <option value="canvas-webgl">Canvas / WebGL</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-xs font-medium text-gray-600">Animazioni presenti</label>
+                <label className="text-xs font-medium text-gray-600">Animations present</label>
                 <div className="mt-1 flex flex-wrap gap-1.5">
                   {ANIMATION_OPTIONS.map((opt) => (
                     <button
@@ -289,25 +289,25 @@ export default function SectionDetailPage() {
               </div>
 
               <div>
-                <label className="text-xs font-medium text-gray-600">Difficoltà percepita</label>
+                <label className="text-xs font-medium text-gray-600">Perceived difficulty</label>
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value as Difficulty)}
                   className="mt-1 block w-full rounded-md border border-gray-200 p-1.5 text-sm"
                 >
-                  <option value="easy">Facile</option>
-                  <option value="medium">Media</option>
-                  <option value="not-feasible">Non ricostruibile fedelmente</option>
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="not-feasible">Not faithfully reconstructible</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-xs font-medium text-gray-600">Note (opzionale)</label>
+                <label className="text-xs font-medium text-gray-600">Notes (optional)</label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
-                  placeholder="Solo per le stranezze che i campi sopra non coprono"
+                  placeholder="Only for quirks the fields above don't cover"
                   className="mt-1 w-full rounded-md border border-gray-200 p-1.5 text-sm"
                 />
               </div>
@@ -315,7 +315,7 @@ export default function SectionDetailPage() {
 
             <div>
               <label className="text-xs font-medium text-gray-600">
-                Descrizione del comportamento (generata automaticamente — correggi dove serve)
+                Behavior description (auto-generated — edit where needed)
               </label>
               <textarea
                 value={motionDescription}
@@ -331,20 +331,20 @@ export default function SectionDetailPage() {
             disabled={savingAnnotation}
             className="mt-4 rounded-md bg-violet-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
-            {savingAnnotation ? "Salvataggio…" : "Salva e segna pronta per la generazione"}
+            {savingAnnotation ? "Saving…" : "Save and mark ready for generation"}
           </button>
         </div>
       )}
 
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-400">Originale</p>
-          <img src={section.sourceScreenshot} alt="Originale" className="w-full rounded-lg border border-gray-100" />
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-400">Original</p>
+          <img src={section.sourceScreenshot} alt="Original" className="w-full rounded-lg border border-gray-100" />
         </div>
         <div>
           <div className="mb-1 flex items-center justify-between">
             <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
-              {view === "diff" ? "Diff" : "Ricostruito"}
+              {view === "diff" ? "Diff" : "Reconstructed"}
             </p>
             <div className="flex gap-1">
               <button
@@ -367,10 +367,10 @@ export default function SectionDetailPage() {
             </div>
           </div>
           {compareImage ? (
-            <img src={compareImage} alt="Ricostruito" className="w-full rounded-lg border border-gray-100" />
+            <img src={compareImage} alt="Reconstructed" className="w-full rounded-lg border border-gray-100" />
           ) : (
             <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-gray-200 text-sm text-gray-400">
-              Nessuna ricostruzione ancora
+              No reconstruction yet
             </div>
           )}
         </div>
@@ -378,7 +378,7 @@ export default function SectionDetailPage() {
 
       {section.generatedCode && (
         <div className="mt-6">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-400">Codice generato</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-400">Generated code</p>
           <pre className="max-h-96 overflow-auto rounded-lg bg-gray-900 p-4 text-xs text-gray-100">
             <code>{section.generatedCode}</code>
           </pre>
@@ -386,12 +386,12 @@ export default function SectionDetailPage() {
       )}
 
       <div className="mt-6 rounded-lg border border-gray-100 p-4">
-        <p className="mb-2 text-sm font-medium text-gray-900">Rigenera con feedback</p>
+        <p className="mb-2 text-sm font-medium text-gray-900">Regenerate with feedback</p>
         <textarea
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
           rows={3}
-          placeholder='Es. "il titolo è troppo piccolo, lo sfondo dovrebbe essere nero"'
+          placeholder='E.g. "the title is too small, the background should be black"'
           className="w-full rounded-md border border-gray-200 p-2 text-sm"
         />
         <button
@@ -399,13 +399,13 @@ export default function SectionDetailPage() {
           disabled={regenerating || !feedback.trim()}
           className="mt-2 rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
         >
-          {regenerating ? "Rigenerazione in corso…" : "Rigenera questa sezione"}
+          {regenerating ? "Regenerating…" : "Regenerate this section"}
         </button>
       </div>
 
       {section.iterations.length > 0 && (
         <div className="mt-6">
-          <p className="mb-2 text-sm font-medium text-gray-900">Storico tentativi</p>
+          <p className="mb-2 text-sm font-medium text-gray-900">Attempt history</p>
           <div className="divide-y divide-gray-100 rounded-lg border border-gray-100">
             {section.iterations.map((it, i) => (
               <div key={i} className="flex items-center justify-between gap-3 p-3">
@@ -413,16 +413,16 @@ export default function SectionDetailPage() {
                   <img src={it.renderScreenshot} alt="" className="h-10 w-16 rounded object-cover" />
                   <div>
                     <p className="text-sm text-gray-900">
-                      Tentativo #{i + 1} · {(it.diffScore * 100).toFixed(1)}%
+                      Attempt #{i + 1} · {(it.diffScore * 100).toFixed(1)}%
                     </p>
-                    <p className="text-xs text-gray-400">{it.feedback ?? "loop automatico"}</p>
+                    <p className="text-xs text-gray-400">{it.feedback ?? "automatic loop"}</p>
                   </div>
                 </div>
                 <button
                   onClick={() => restore(i)}
                   className="rounded-md border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
                 >
-                  Ripristina
+                  Restore
                 </button>
               </div>
             ))}

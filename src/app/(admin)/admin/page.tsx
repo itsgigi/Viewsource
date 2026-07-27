@@ -16,7 +16,7 @@ interface AdminSite {
   createdAt: string;
   screenshot: string | null;
   cover: string | null;
-  price: number | null; // centesimi; null = codice gratis (nessun paywall)
+  price: number | null; // cents; null = free code (no paywall)
   chatIntents: number;
   _count: { documents: number; components: number };
 }
@@ -229,7 +229,7 @@ export default function AdminPage() {
 
   async function toggleVisibility(site: AdminSite) {
     const visibility = site.visibility === "published" ? "draft" : "published";
-    // Ottimistico: aggiorna subito, il reload conferma
+    // Optimistic: update right away, the reload confirms
     setSites((all) =>
       all.map((s) => (s.id === site.id ? { ...s, visibility } : s))
     );
@@ -263,10 +263,8 @@ export default function AdminPage() {
       <div className="flex items-center justify-between border-b border-zinc-200 pb-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-900 text-xs font-bold text-white">
-              si
-            </span>
-            <span className="font-semibold tracking-tight text-zinc-900">Site Ingest</span>
+            <img src="/logovs.png" alt="Viewsource" className="h-7 w-7 rounded-md object-contain" />
+            <span className="font-semibold tracking-tight text-zinc-900">Viewsource</span>
           </Link>
           <nav className="flex items-center gap-6 text-sm">
             <span className="font-medium text-zinc-900">Admin</span>
@@ -357,19 +355,21 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {sourceType === "url" && (
-          <div className="mt-3 flex items-center gap-2">
-            <label className="shrink-0 text-xs text-zinc-400">
-              Awwwards URL <span className="text-zinc-300">(optional)</span>
-            </label>
-            <input
-              value={awwwardsUrl}
-              onChange={(e) => setAwwwardsUrl(e.target.value)}
-              placeholder="https://www.awwwards.com/sites/…  — auto-detected if left empty"
-              className="w-full max-w-md rounded-lg border border-zinc-200 px-3 py-1.5 text-xs text-zinc-900 outline-none placeholder:text-zinc-300 focus:border-zinc-400"
-            />
-          </div>
-        )}
+        <div className="mt-3 flex items-center gap-2">
+          <label className="shrink-0 text-xs text-zinc-400">
+            Awwwards URL <span className="text-zinc-300">(optional)</span>
+          </label>
+          <input
+            value={awwwardsUrl}
+            onChange={(e) => setAwwwardsUrl(e.target.value)}
+            placeholder={
+              sourceType === "url"
+                ? "https://www.awwwards.com/sites/…  — auto-detected if left empty"
+                : "https://www.awwwards.com/sites/…  — auto-detected from the repo's homepage, if set"
+            }
+            className="w-full max-w-md rounded-lg border border-zinc-200 px-3 py-1.5 text-xs text-zinc-900 outline-none placeholder:text-zinc-300 focus:border-zinc-400"
+          />
+        </div>
 
         {sourceType === "git" && (
           <div className="mt-3 flex items-center gap-2">
@@ -483,7 +483,7 @@ export default function AdminPage() {
                     <div className="flex flex-wrap items-center justify-end gap-2.5">
                       <label
                         className="flex items-center gap-1 text-xs text-zinc-400"
-                        title="Prezzo di sblocco codice (vuoto = gratis)"
+                        title="Code unlock price (empty = free)"
                       >
                         €
                         <input
@@ -498,7 +498,7 @@ export default function AdminPage() {
                       <Link
                         href={`/admin/sites/${s.id}`}
                         className="flex items-center gap-1 whitespace-nowrap text-xs text-zinc-400 transition hover:text-zinc-900"
-                        title="Sezioni: cattura, ricostruzione, QA"
+                        title="Sections: capture, reconstruction, QA"
                       >
                         Sections →
                       </Link>
@@ -537,7 +537,7 @@ export default function AdminPage() {
   );
 }
 
-// ---------- Media modal: cover del sito + cover dei componenti ----------
+// ---------- Media modal: site cover + component covers ----------
 
 async function uploadMedia(
   file: File
@@ -547,7 +547,7 @@ async function uploadMedia(
   const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
   if (!res.ok) {
     const data = await res.json().catch(() => null);
-    throw new Error(data?.error ?? `Upload fallito (${res.status})`);
+    throw new Error(data?.error ?? `Upload failed (${res.status})`);
   }
   return res.json();
 }
@@ -619,7 +619,7 @@ function CoverEditor({
       const res = await uploadMedia(file);
       onChange(res.url, res.coverType);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload fallito");
+      setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
     }
@@ -639,7 +639,7 @@ function CoverEditor({
                 e.target.value ? guessCoverType(e.target.value) : null
               )
             }
-            placeholder={allowVideo ? "https://… (immagine o video)" : "https://… (immagine)"}
+            placeholder={allowVideo ? "https://… (image or video)" : "https://… (image)"}
             className="w-full min-w-0 flex-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs text-zinc-900 outline-none placeholder:text-zinc-300 focus:border-zinc-400"
           />
           <label className="shrink-0 cursor-pointer rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs text-zinc-600 transition hover:border-zinc-400">
@@ -743,13 +743,13 @@ function MediaModal({
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <h4 className="text-xs font-medium uppercase tracking-widest text-zinc-400">
-            Cover del sito
+            Site cover
           </h4>
           <p className="mt-1 text-xs text-zinc-400">
-            Mostrata nella galleria al posto dello screenshot automatico. Solo immagini.
+            Shown in the gallery instead of the automatic screenshot. Images only.
           </p>
           <CoverEditor
-            label={siteCover ? "Cover personalizzata" : "Nessuna cover — uso lo screenshot"}
+            label={siteCover ? "Custom cover" : "No cover — using the screenshot"}
             url={siteCover}
             coverType="image"
             allowVideo={false}
@@ -760,15 +760,15 @@ function MediaModal({
           />
 
           <h4 className="mt-5 border-t border-zinc-100 pt-4 text-xs font-medium uppercase tracking-widest text-zinc-400">
-            Cover dei componenti
+            Component covers
           </h4>
           <p className="mt-1 text-xs text-zinc-400">
-            Foto o video mostrati sulla card del componente al posto del placeholder.
+            Photo or video shown on the component card instead of the placeholder.
           </p>
 
           {!components && <p className="mt-3 text-sm text-zinc-400">Loading…</p>}
           {components?.length === 0 && (
-            <p className="mt-3 text-sm text-zinc-400">Nessun componente per questo sito.</p>
+            <p className="mt-3 text-sm text-zinc-400">No components for this site.</p>
           )}
 
           <div className="divide-y divide-zinc-100">

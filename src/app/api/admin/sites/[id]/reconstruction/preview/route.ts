@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!CAN_RUN_LOCAL_PIPELINE) {
-    return NextResponse.json({ error: "Richiede l'ambiente locale" }, { status: 501 });
+    return NextResponse.json({ error: "Requires the local environment" }, { status: 501 });
   }
 
   const { id } = await params;

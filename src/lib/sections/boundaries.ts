@@ -5,20 +5,20 @@ import { uploadImage, SECTION_VIEWPORT_WIDTH } from "@/lib/ingest/capture";
 import { Prisma, type Section } from "@/generated/prisma/client";
 
 /**
- * Boundary editor HITL (spec Parte 5a): merge/split/discard/rename operano
- * su righe `Section` REALI (non un draft ephemero) — servono ID stabili da
- * PATCHare dalla UI, e comunque nulla a valle (annotazione, generazione) può
- * iniziare finché i confini non sono confermati. Ristretti a
- * status === "captured": prima che l'HITL annotation flippi lo stato a
- * "pending", per evitare di dover riconciliare iterations/generatedCode di
- * sezioni già generate.
+ * HITL boundary editor (spec Part 5a): merge/split/discard/rename operate
+ * on REAL `Section` rows (not an ephemeral draft) — stable IDs are needed
+ * to PATCH from the UI, and nothing downstream (annotation, generation)
+ * can start until the boundaries are confirmed. Restricted to
+ * status === "captured": before HITL annotation flips the status to
+ * "pending", to avoid having to reconcile iterations/generatedCode of
+ * already-generated sections.
  */
 
 async function requireCapturedSection(sectionId: string): Promise<Section> {
   const section = await prisma.section.findUniqueOrThrow({ where: { id: sectionId } });
   if (section.status !== "captured") {
     throw new Error(
-      'I confini sono modificabili solo per sezioni in stato "captured" (prima della revisione HITL).'
+      'Boundaries are only editable for sections in "captured" status (before HITL review).'
     );
   }
   return section;
@@ -27,9 +27,9 @@ async function requireCapturedSection(sectionId: string): Promise<Section> {
 async function fetchFullPageBuffer(siteId: string): Promise<Buffer> {
   const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
   if (!site.sectionsFullPageScreenshot) {
-    throw new Error("Nessuno screenshot full-page disponibile per questo sito: rilancia la cattura.");
+    throw new Error("No full-page screenshot available for this site: re-run the capture.");
   }
-  // Supporta sia URL Blob che data: URI (stesso pattern già usato in pipeline.ts).
+  // Supports both Blob URLs and data: URIs (same pattern already used in pipeline.ts).
   const res = await fetch(site.sectionsFullPageScreenshot);
   return Buffer.from(await res.arrayBuffer());
 }
@@ -56,11 +56,11 @@ function mergeJsonArrays(a: unknown, b: unknown): Prisma.InputJsonValue {
   return [...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])] as Prisma.InputJsonValue;
 }
 
-// Ri-numera TUTTE le sezioni rimaste del sito, 0..N-1 per boundsTop
-// crescente. Un pass solo: il vincolo (siteId, order) è DEFERRABLE INITIALLY
-// DEFERRED in DB (vedi commento in schema.prisma) — Postgres valida
-// l'unicità al COMMIT della transazione, non ad ogni singola UPDATE, quindi
-// riassegnazioni intermedie che si "scambiano" valori non violano nulla.
+// Renumbers ALL remaining sections of the site, 0..N-1 by increasing
+// boundsTop. Single pass: the (siteId, order) constraint is DEFERRABLE
+// INITIALLY DEFERRED in the DB (see comment in schema.prisma) — Postgres
+// validates uniqueness at transaction COMMIT, not on every single UPDATE,
+// so intermediate reassignments that "swap" values don't violate anything.
 async function renumberOrder(tx: Prisma.TransactionClient, siteId: string): Promise<void> {
   const remaining = await tx.section.findMany({
     where: { siteId },
@@ -74,12 +74,12 @@ async function renumberOrder(tx: Prisma.TransactionClient, siteId: string): Prom
 }
 
 export async function mergeSections(siteId: string, idA: string, idB: string): Promise<void> {
-  assertLocalOnly("L'unione di sezioni");
-  if (idA === idB) throw new Error("Non puoi unire una sezione con se stessa");
+  assertLocalOnly("Merging sections");
+  if (idA === idB) throw new Error("You can't merge a section with itself");
 
   const [a, b] = await Promise.all([requireCapturedSection(idA), requireCapturedSection(idB)]);
   if (a.siteId !== siteId || b.siteId !== siteId) {
-    throw new Error("Le sezioni non appartengono a questo sito");
+    throw new Error("The sections don't belong to this site");
   }
 
   const topA = a.boundsTop ?? 0;
@@ -98,7 +98,7 @@ export async function mergeSections(siteId: string, idA: string, idB: string): P
       data: {
         boundsTop: top,
         boundsHeight: bottom - top,
-        sourceHtml: `${first.sourceHtml}\n<!-- unita con sezione "${second.name}" -->\n${second.sourceHtml}`,
+        sourceHtml: `${first.sourceHtml}\n<!-- merged with section "${second.name}" -->\n${second.sourceHtml}`,
         sourceCss: [first.sourceCss, second.sourceCss].filter(Boolean).join("\n") || null,
         sourceScreenshot: screenshot,
         mediaAssets: mergeJsonArrays(first.mediaAssets, second.mediaAssets),
@@ -112,17 +112,17 @@ export async function mergeSections(siteId: string, idA: string, idB: string): P
 }
 
 export async function splitSection(siteId: string, sectionId: string, atY: number): Promise<void> {
-  assertLocalOnly("La divisione di una sezione");
+  assertLocalOnly("Splitting a section");
 
   const section = await requireCapturedSection(sectionId);
-  if (section.siteId !== siteId) throw new Error("La sezione non appartiene a questo sito");
+  if (section.siteId !== siteId) throw new Error("The section doesn't belong to this site");
 
   const top = section.boundsTop ?? 0;
   const height = section.boundsHeight ?? 0;
   const bottom = top + height;
   const y = Math.round(atY);
   if (y <= top + 4 || y >= bottom - 4) {
-    throw new Error("Punto di taglio troppo vicino al bordo o fuori dai bounds della sezione");
+    throw new Error("Cut point too close to the edge or outside the section's bounds");
   }
 
   const fullPage = await fetchFullPageBuffer(siteId);
@@ -131,10 +131,10 @@ export async function splitSection(siteId: string, sectionId: string, atY: numbe
     cropFromFullPage(fullPage, y, bottom - y, `split-${sectionId}-b.png`),
   ]);
 
-  // Nota (limite noto, spec Parte 5a): non c'è modo di sapere quali figli DOM
-  // cadono da un lato o l'altro di un taglio pixel arbitrario — sourceHtml/Css
-  // vengono duplicati su entrambe le metà. Lo screenshot ritagliato resta
-  // comunque un target visivo corretto per il generatore.
+  // Note (known limitation, spec Part 5a): there's no way to know which DOM
+  // children fall on which side of an arbitrary pixel cut — sourceHtml/Css
+  // get duplicated on both halves. The cropped screenshot is still a
+  // correct visual target for the generator regardless.
   await prisma.$transaction(async (tx) => {
     await tx.section.update({
       where: { id: section.id },
@@ -148,7 +148,7 @@ export async function splitSection(siteId: string, sectionId: string, atY: numbe
     await tx.section.create({
       data: {
         siteId,
-        order: 100_000, // temporaneo, corretto subito da renumberOrder sotto
+        order: 100_000, // temporary, immediately corrected by renumberOrder below
         name: `${section.name} (2)`,
         sourceHtml: section.sourceHtml,
         sourceCss: section.sourceCss,
@@ -167,10 +167,10 @@ export async function splitSection(siteId: string, sectionId: string, atY: numbe
 }
 
 export async function discardSection(siteId: string, sectionId: string): Promise<void> {
-  assertLocalOnly("Lo scarto di una sezione");
+  assertLocalOnly("Discarding a section");
 
   const section = await requireCapturedSection(sectionId);
-  if (section.siteId !== siteId) throw new Error("La sezione non appartiene a questo sito");
+  if (section.siteId !== siteId) throw new Error("The section doesn't belong to this site");
 
   await prisma.$transaction(async (tx) => {
     await tx.section.delete({ where: { id: sectionId } });
@@ -178,24 +178,24 @@ export async function discardSection(siteId: string, sectionId: string): Promise
   });
 }
 
-// Il rename non ha bisogno di un modulo dedicato: riusa
-// PATCH /api/admin/sections/[sectionId] con { name } (già gestito lì),
-// nessuna necessità di re-crop/riconciliazione.
+// Rename doesn't need a dedicated module: it reuses
+// PATCH /api/admin/sections/[sectionId] with { name } (already handled there),
+// no need for re-crop/reconciliation.
 
-// Drag di un bordo (alto/basso) nel boundary editor: ridimensiona una
-// sezione "captured" senza toccarne altre, ri-ritagliando lo screenshot dal
-// fullPage condiviso.
+// Dragging an edge (top/bottom) in the boundary editor: resizes a
+// "captured" section without touching others, re-cropping the screenshot
+// from the shared fullPage.
 export async function resizeSection(
   siteId: string,
   sectionId: string,
   boundsTop: number,
   boundsHeight: number
 ): Promise<void> {
-  assertLocalOnly("Il ridimensionamento di una sezione");
+  assertLocalOnly("Resizing a section");
 
   const section = await requireCapturedSection(sectionId);
-  if (section.siteId !== siteId) throw new Error("La sezione non appartiene a questo sito");
-  if (boundsHeight <= 4) throw new Error("Altezza sezione troppo piccola");
+  if (section.siteId !== siteId) throw new Error("The section doesn't belong to this site");
+  if (boundsHeight <= 4) throw new Error("Section height too small");
 
   const fullPage = await fetchFullPageBuffer(siteId);
   const screenshot = await cropFromFullPage(

@@ -21,7 +21,7 @@ export default function AdminLoginPage() {
       });
 
       if (!res.ok) {
-        setError(res.status === 401 ? "Password errata" : `Errore ${res.status}`);
+        setError(res.status === 401 ? "Incorrect password" : `Error ${res.status}`);
         return;
       }
 
@@ -38,10 +38,8 @@ export default function AdminLoginPage() {
         className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-6"
       >
         <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-900 text-xs font-bold text-white">
-            si
-          </span>
-          <span className="font-semibold tracking-tight text-zinc-900">Site Ingest — Admin</span>
+          <img src="/logovs.png" alt="Viewsource" className="h-7 w-7 rounded-md object-contain" />
+          <span className="font-semibold tracking-tight text-zinc-900">Viewsource — Admin</span>
         </div>
 
         <label className="mt-6 block text-xs font-medium text-zinc-500">Password</label>

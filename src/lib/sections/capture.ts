@@ -7,25 +7,24 @@ import { generateMotionDescription } from "./motion";
 import { Prisma, type Section } from "@/generated/prisma/client";
 
 /**
- * Cattura la ground truth (Fase A): apre il sito, ne rileva le sezioni
- * (detection ricorsiva), inventaria i media reali, cattura la filmstrip di
- * scroll, le etichetta e crea le righe `Section` (status "captured" — non
- * ancora generabile: deve prima passare dall'HITL, vedi src/lib/sections/boundaries.ts
- * e la UI di annotazione). Rieseguire la cattura sostituisce la ground truth
- * precedente per il sito — non c'è nulla che dipenda da id di `Section`
- * stabili tra una cattura e l'altra.
+ * Captures the ground truth (Phase A): opens the site, detects its
+ * sections (recursive detection), inventories the real media, captures the
+ * scroll filmstrip, labels them, and creates the `Section` rows (status
+ * "captured" — not yet generatable: it must first go through HITL, see
+ * src/lib/sections/boundaries.ts and the annotation UI). Re-running the
+ * capture replaces the site's previous ground truth — nothing depends on
+ * `Section` IDs being stable across captures.
  *
- * Riporta lo stato di avanzamento in `./progress` (in memoria) così il
- * pannello admin può fare polling e mostrare cosa sta succedendo invece di
- * uno spinner bloccante e muto.
+ * Reports progress in `./progress` (in memory) so the admin panel can poll
+ * and show what's happening instead of a blocking, silent spinner.
  */
 export async function captureGroundTruthSections(siteId: string): Promise<Section[]> {
-  assertLocalOnly("La cattura delle sezioni");
+  assertLocalOnly("Section capture");
 
   try {
     const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
     if (site.sourceType !== "url") {
-      throw new Error('La cattura per-sezione richiede un sito di tipo "url"');
+      throw new Error('Per-section capture requires a site of type "url"');
     }
 
     const { sections: groundTruth, fullPageScreenshot } = await captureSiteSections(

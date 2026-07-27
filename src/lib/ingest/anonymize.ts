@@ -5,16 +5,16 @@ import { prisma } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 
 /**
- * Mitigazione base del rischio copyright per il clone showcase (Fase D):
- * anonimizza l'HTML catturato (Fase A) sostituendo brand, loghi e copy
- * identificativo con placeholder neutri, mantenendo intatti struttura DOM,
- * classi CSS, layout, palette e TUTTI gli altri asset (niente riscrittura
- * generativa dell'HTML: un LLM che riscrive pagine intere le tronca/altera
- * facilmente, qui manipoliamo il DOM chirurgicamente con cheerio).
+ * Baseline copyright-risk mitigation for the clone showcase (Phase D):
+ * anonymizes the captured HTML (Phase A) by replacing brand, logos, and
+ * identifying copy with neutral placeholders, keeping the DOM structure,
+ * CSS classes, layout, palette, and ALL other assets intact (no generative
+ * rewriting of the HTML: an LLM that rewrites entire pages easily
+ * truncates/alters them; here we manipulate the DOM surgically with cheerio).
  *
- * QUESTO È MITIGAZIONE, NON IMMUNITÀ: best-effort, può mancare riferimenti
- * impliciti. Il chiamante deve SEMPRE mostrare un link di attribuzione
- * all'originale accanto al clone.
+ * THIS IS MITIGATION, NOT IMMUNITY: best-effort, it can miss implicit
+ * references. The caller must ALWAYS show an attribution link to the
+ * original next to the clone.
  */
 
 const chatModel = new ChatOpenAI({
@@ -39,9 +39,9 @@ const LOGO_SELECTOR = [
 const PLACEHOLDER = "Studio";
 
 /**
- * Genera (o rigenera) la versione anonimizzata dell'HTML catturato per un
- * sito e la persiste su Site.clonePreview. Lazy: chiamata solo al bisogno
- * (prima richiesta di /sites/[slug]/preview), non durante l'ingestion.
+ * Generates (or regenerates) the anonymized version of the captured HTML
+ * for a site and persists it to Site.clonePreview. Lazy: called only on
+ * demand (first request to /sites/[slug]/preview), not during ingestion.
  */
 export async function anonymizeCapture(siteId: string): Promise<ClonePreview> {
   const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
@@ -54,14 +54,14 @@ export async function anonymizeCapture(siteId: string): Promise<ClonePreview> {
   const rawHtml = homepageDoc?.html;
   if (!rawHtml) {
     throw new Error(
-      "Nessun HTML catturato per questo sito: serve prima una ingestion con cattura reale (Fase A)."
+      "No HTML captured for this site: an ingestion with a real capture (Phase A) is needed first."
     );
   }
 
   const $ = cheerio.load(rawHtml);
 
-  // 1. Sicurezza, a prescindere da tutto il resto: via <script> ed event
-  // handler inline. È la difesa primaria per l'iframe sandboxed.
+  // 1. Security, above everything else: strip <script> and inline event
+  // handlers. This is the primary defense for the sandboxed iframe.
   $("script").remove();
   $("*").each((_, el) => {
     if (el.type !== "tag") return;
@@ -73,16 +73,16 @@ export async function anonymizeCapture(siteId: string): Promise<ClonePreview> {
     }
   });
 
-  // 2. <base href>: SENZA, i path relativi di CSS/font/immagini del sito
-  // originale non risolvono dentro l'iframe srcDoc (origin "null") e la
-  // pagina appare completamente sgraffata — questo è il bug principale
-  // di fedeltà visiva del clone, non un dettaglio.
+  // 2. <base href>: WITHOUT it, the original site's relative CSS/font/image
+  // paths won't resolve inside the srcDoc iframe (origin "null") and the
+  // page shows up completely unstyled — this is the clone's main visual
+  // fidelity bug, not a minor detail.
   const origin = safeOrigin(site.sourceUrl);
   if (origin) {
     $("head").prepend(`<base href="${origin}/">`);
   }
 
-  // 3. Termini di brand da anonimizzare nel testo/attributi visibili.
+  // 3. Brand terms to anonymize in visible text/attributes.
   const terms = await brandTerms(site).catch(() => [site.name]);
   const pattern = buildPattern(terms);
 
@@ -100,10 +100,10 @@ export async function anonymizeCapture(siteId: string): Promise<ClonePreview> {
     }
   }
 
-  // 4. Loghi → placeholder neutro. Il resto degli asset (foto prodotto,
-  // illustrazioni...) resta intatto: sostituirli tutti con placeholder
-  // generici degraderebbe la fedeltà visiva senza un reale beneficio di
-  // mitigazione (non sono identificativi del brand).
+  // 4. Logos → neutral placeholder. The rest of the assets (product
+  // photos, illustrations...) stay intact: replacing them all with generic
+  // placeholders would degrade visual fidelity without a real mitigation
+  // benefit (they aren't brand-identifying).
   $(LOGO_SELECTOR).each((_, el) => {
     if (el.type !== "tag") return;
     const $el = $(el);
@@ -152,14 +152,14 @@ const termsSchema = z.object({
   terms: z
     .array(z.string())
     .max(10)
-    .describe("Termini identificativi del brand da anonimizzare: nomi prodotto, slogan distintivi, nomi propri citati"),
+    .describe("Brand-identifying terms to anonymize: product names, distinctive slogans, proper names mentioned"),
 });
 
 /**
- * Chiamata LLM piccola e mirata (solo nome+descrizione, non l'HTML intero)
- * per dedurre termini di brand oltre al nome del sito — es. nomi prodotto
- * ricorrenti nel copy. Costo e rischio di troncamento vicini a zero rispetto
- * a far riscrivere l'intera pagina a un LLM.
+ * Small, targeted LLM call (name+description only, not the whole HTML) to
+ * infer brand terms beyond the site's name — e.g. recurring product names
+ * in the copy. Cost and truncation risk near zero compared to having an
+ * LLM rewrite the entire page.
  */
 async function brandTerms(site: { name: string; description: string | null }): Promise<string[]> {
   const structured = chatModel.withStructuredOutput(termsSchema, { name: "brand_terms" });
@@ -167,9 +167,9 @@ async function brandTerms(site: { name: string; description: string | null }): P
     {
       role: "system",
       content:
-        "Elenca (max 10) i termini identificativi di un brand/prodotto da anonimizzare in un clone dimostrativo pubblico: nome azienda, nomi prodotto ricorrenti, slogan distintivi. NON includere parole generiche di settore (es. 'caffè', 'macchina', 'sostenibilità').",
+        "List (max 10) the brand/product-identifying terms to anonymize in a public demonstrative clone: company name, recurring product names, distinctive slogans. Do NOT include generic industry words (e.g. 'coffee', 'car', 'sustainability').",
     },
-    { role: "user", content: `Nome sito: ${site.name}\nDescrizione: ${site.description ?? "non disponibile"}` },
+    { role: "user", content: `Site name: ${site.name}\nDescription: ${site.description ?? "not available"}` },
   ]);
   return [site.name, ...result.terms];
 }

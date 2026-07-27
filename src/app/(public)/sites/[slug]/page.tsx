@@ -4,9 +4,9 @@ import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
 
-// Auth utenti pubblici (Clerk), separata dal cookie admin. Se le chiavi non
-// sono configurate l'app resta usabile: i componenti Clerk (useUser,
-// SignInButton...) non vengono mai montati, quindi non serve <ClerkProvider>.
+// Public user auth (Clerk), separate from the admin cookie. If the keys
+// aren't configured the app stays usable: the Clerk components (useUser,
+// SignInButton...) never get mounted, so <ClerkProvider> isn't needed.
 const CLERK_ENABLED = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 interface Component {
@@ -20,15 +20,15 @@ interface Component {
   code: string | null;
   prompt: string | null;
   deps: string[] | null;
-  // Solo componenti origin "ast" (ingestion da repo, sourceType "git")
+  // Only "ast"-origin components (repo ingestion, sourceType "git")
   previewImage?: string | null;
 }
 
-// Sezione pubblicata dallo studio di ricostruzione assistita
-// (src/lib/reconstruction/publish.ts) — l'unità mostrata pubblicamente,
-// sostituisce i Component come vetrina primaria del sito (vedi piano
-// Viewsource v2). Mappata in GalleryItem qui sotto per riusare
-// ExtractModal/CopyPromptButton (pensati per Component) senza duplicarli.
+// Section published by the assisted reconstruction studio
+// (src/lib/reconstruction/publish.ts) — the publicly shown unit,
+// replaces Component as the site's primary showcase (see Viewsource v2
+// plan). Mapped to GalleryItem below to reuse ExtractModal/CopyPromptButton
+// (designed for Component) without duplicating them.
 interface SiteSection {
   id: string;
   order: number;
@@ -43,7 +43,7 @@ function sectionToGalleryItem(s: SiteSection): Component {
     id: s.id,
     name: s.name,
     kind: "section",
-    description: `Sezione #${s.order + 1}`,
+    description: `Section #${s.order + 1}`,
     cover: s.renderScreenshot,
     coverType: "image",
     sourcePath: null,
@@ -75,7 +75,7 @@ interface SiteDetail {
   components: Component[];
   sections: SiteSection[];
   documents: Doc[];
-  price: number | null; // centesimi; null = codice sempre gratis
+  price: number | null; // cents; null = code always free
   unlocked: boolean;
 }
 
@@ -283,9 +283,9 @@ export default function SitePage({
   if (notFound) {
     return (
       <main className="mx-auto max-w-4xl px-6 py-12">
-        <p className="text-zinc-500">Sito non trovato.</p>
+        <p className="text-zinc-500">Site not found.</p>
         <Link href="/" className="mt-4 inline-block text-sm text-zinc-700 underline">
-          ← Torna alla galleria
+          ← Back to gallery
         </Link>
       </main>
     );
@@ -299,10 +299,10 @@ export default function SitePage({
   const designInfo = site.designInfo;
   const awwwards = site.awwwards;
 
-  // Le due modalità di ingestion condividono questa pagina: "git" mostra i
-  // Component reali (origin "ast", preview via albero fiber React), "url"
-  // mostra le Section pubblicate dallo studio di ricostruzione. Stessa
-  // griglia/modale, sorgente dati ed endpoint di estrazione diversi.
+  // The two ingestion modes share this page: "git" shows the real
+  // Component records (origin "ast", preview via the React fiber tree), "url"
+  // shows the Sections published by the reconstruction studio. Same
+  // grid/modal, different data source and extraction endpoint.
   const isRepo = site.sourceType === "git";
   const galleryItems: Component[] = isRepo
     ? site.components.map((c) => ({
@@ -323,10 +323,8 @@ export default function SitePage({
       <div className="flex items-center justify-between gap-3 text-sm">
         <div className="flex items-center gap-1.5">
           <Link href="/" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-900">
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-zinc-900 text-[10px] font-bold text-white">
-              si
-            </span>
-            Site Ingest
+            <img src="/logovs.png" alt="Viewsource" className="h-6 w-6 rounded-md object-contain" />
+            Viewsource
           </Link>
           <span className="text-zinc-300">/</span>
           <span className="text-zinc-900">{site.name}</span>
@@ -338,7 +336,7 @@ export default function SitePage({
             ) : (
               <SignInButton mode="modal">
                 <button className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-400">
-                  Accedi
+                  Sign in
                 </button>
               </SignInButton>
             )}
@@ -362,7 +360,7 @@ export default function SitePage({
         </div>
       </div>
 
-      {/* Preview live del sito deployato */}
+      {/* Live preview of the deployed site */}
       {site.deployedUrl && (
         <section className="mt-8 overflow-hidden rounded-xl border border-zinc-200 bg-white">
           <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-3">
@@ -379,7 +377,7 @@ export default function SitePage({
               <ExternalLinkIcon />
             </a>
           </div>
-          <iframe src={site.deployedUrl} className="h-140 w-full" title={`${site.name} live preview`} />
+          <iframe src={site.deployedUrl} className="h-160 w-full" title={`${site.name} live preview`} />
         </section>
       )}
 
@@ -581,7 +579,7 @@ export default function SitePage({
         ))}
       </div>
 
-      {/* Gallery: Components (repo) o Sections (ricostruzione) */}
+      {/* Gallery: Components (repo) or Sections (reconstruction) */}
       {tab === "gallery" && (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {galleryItems.length === 0 && (
@@ -683,7 +681,7 @@ export default function SitePage({
   );
 }
 
-// ---------- Copia prompt: azione rapida, sempre gratis, niente modale ----------
+// ---------- Copy prompt: quick action, always free, no modal ----------
 
 function CopyPromptButton({ endpoint, component }: { endpoint: string; component: Component }) {
   const [state, setState] = useState<"idle" | "loading" | "copied" | "error">("idle");
@@ -729,7 +727,7 @@ function CopyPromptButton({ endpoint, component }: { endpoint: string; component
   );
 }
 
-// ---------- Extraction modal (codice, gated su Unlock se il sito ha un prezzo) ----------
+// ---------- Extraction modal (code, gated behind Unlock if the site has a price) ----------
 
 function ExtractModal({
   slug,
@@ -754,9 +752,9 @@ function ExtractModal({
   const [copied, setCopied] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  // CLERK_ENABLED è una costante di modulo (da env, fissa per tutta la
-  // sessione): condizionare la hook su di essa non rompe le rules-of-hooks,
-  // l'ordine delle chiamate resta identico ad ogni render di questa istanza.
+  // CLERK_ENABLED is a module-level constant (from env, fixed for the whole
+  // session): conditioning the hook on it doesn't break rules-of-hooks,
+  // the call order stays identical on every render of this instance.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const { isSignedIn } = CLERK_ENABLED ? useUser() : { isSignedIn: false };
 
@@ -769,11 +767,11 @@ function ExtractModal({
       if (res.ok && data.url) {
         window.location.href = data.url;
       } else {
-        setError(data.error ?? `Errore ${res.status}`);
+        setError(data.error ?? `Error ${res.status}`);
         setCheckoutLoading(false);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore checkout");
+      setError(err instanceof Error ? err.message : "Checkout error");
       setCheckoutLoading(false);
     }
   }
@@ -799,8 +797,8 @@ function ExtractModal({
   const result = results[mode] ?? null;
   const codeLocked = mode === "code" && !!price && !unlocked;
 
-  // Bundle multi-file (componenti origin "ast"): l'utente sceglie quale file
-  // vedere/copiare, il file principale è selezionato di default.
+  // Multi-file bundle ("ast"-origin components): the user picks which file
+  // to view/copy, the main file is selected by default.
   const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
   const bundleFiles = mode === "code" ? result?.files ?? [] : [];
   const activeFile =
@@ -911,7 +909,7 @@ function ExtractModal({
               (CLERK_ENABLED && !isSignedIn ? (
                 <SignInButton mode="modal">
                   <button className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700">
-                    <LockIcon /> Accedi per sbloccare
+                    <LockIcon /> Sign in to unlock
                   </button>
                 </SignInButton>
               ) : (
@@ -923,17 +921,17 @@ function ExtractModal({
                   <LockIcon />
                   {checkoutLoading
                     ? "Redirecting…"
-                    : `Sblocca il codice di questo sito — €${((price ?? 0) / 100).toFixed(2)}`}
+                    : `Unlock this site's code — €${((price ?? 0) / 100).toFixed(2)}`}
                 </button>
               ))}
           </div>
 
           <p className="mt-3 text-xs text-zinc-500">
             {codeLocked
-              ? "Il codice di questo componente fa parte del pacchetto a pagamento del sito: sblocco a vita, valido per TUTTI i componenti di questo sito."
+              ? "This component's code is part of the site's paid package: lifetime unlock, valid for ALL components of this site."
               : mode === "code"
-              ? "Codice React + TypeScript + Tailwind CSS pronto da incollare nel tuo progetto."
-              : "Prompt per Claude Code, Cursor o un altro LLM: ricrea il componente adattato alle convenzioni del progetto ospite."}
+              ? "React + TypeScript + Tailwind CSS code, ready to paste into your project."
+              : "Prompt for Claude Code, Cursor, or another LLM: recreates the component adapted to the host project's conventions."}
           </p>
 
           {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
@@ -1009,7 +1007,7 @@ function ExtractModal({
   );
 }
 
-// ---------- Chat (fake door: l'endpoint registra l'intento) ----------
+// ---------- Chat (fake door: the endpoint just logs the intent) ----------
 
 function SiteChat({ slug }: { slug: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);

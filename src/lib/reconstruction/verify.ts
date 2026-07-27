@@ -14,17 +14,18 @@ export interface VerifyResult {
 }
 
 /**
- * Fase 4 — strumento di verifica A RICHIESTA (mai un loop automatico): render
- * della sezione via lo studio, confronto pixelmatch con il frame scelto
- * dall'admin come riferimento. Il frame è JPEG (estratto da ffmpeg), va
- * convertito a PNG prima del confronto (compareScreenshots richiede PNG).
+ * Phase 4 — ON-DEMAND verification tool (never an automatic loop): renders
+ * the section via the studio, pixelmatch comparison against the frame
+ * chosen by the admin as reference. The frame is JPEG (extracted via
+ * ffmpeg), needs to be converted to PNG before comparison
+ * (compareScreenshots requires PNG).
  */
 export async function verifySection(
   slug: string,
   sectionFile: string,
   referenceFrame: string
 ): Promise<VerifyResult> {
-  assertLocalOnly("Il confronto visivo");
+  assertLocalOnly("Visual comparison");
 
   const frameBuffer = await fs.readFile(path.join(framesDir(slug), referenceFrame));
   const framePng = await sharp(frameBuffer).png().toBuffer();

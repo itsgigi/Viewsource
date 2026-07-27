@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { SearchBar } from "./search-bar";
+import ShinyText from "@/components/ShinyText";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +25,17 @@ function GitBranchIcon() {
   );
 }
 
-export default async function GalleryPage() {
+export default async function GalleryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
   const sites = await prisma.site.findMany({
-    where: { visibility: "published" },
+    where: {
+      visibility: "published",
+      ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+    },
     orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
     select: {
       id: true,
@@ -45,29 +55,63 @@ export default async function GalleryPage() {
       {/* Top bar */}
       <div className="flex items-center justify-between border-b border-zinc-200 pb-4">
         <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-900 text-xs font-bold text-white">
-            si
-          </span>
-          <span className="font-semibold tracking-tight text-zinc-900">Site Ingest</span>
+          <img src="/logovs.png" alt="Viewsource" className="h-7 w-7 rounded-md object-contain" />
+          <span className="font-semibold tracking-tight text-zinc-900">Viewsource</span>
         </Link>
       </div>
 
       {/* Hero */}
       <div className="mt-10">
         <h1 className="text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl">
-          Siti selezionati. <span className="font-serif italic text-zinc-400">Componenti</span>{" "}
-          pronti da estrarre.
+          Recreate. Learn.{" "}
+          <ShinyText
+            text="Own the code."
+            className="font-serif"
+            color="#8b5cf6"
+            shineColor="#38bdf8"
+            speed={5.5}
+            spread={110}
+          />
         </h1>
         <p className="mt-3 text-base text-zinc-500">
-          Una galleria curata di siti notevoli: esplora l&apos;analisi AI di ciascuno ed
-          estrai i componenti come codice o prompt.
+          A curated gallery of notable sites: explore the AI analysis of each and
+          extract components as code or prompts.
         </p>
+
+        <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3 text-xs font-medium uppercase tracking-wide text-zinc-400">
+          <span className="flex items-center gap-2">
+            <GlobeIcon />
+            Awwward winning websites
+          </span>
+          <span className="hidden h-4 w-px bg-zinc-200 sm:block" />
+          <span className="flex items-center gap-2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
+              <path d="M8 6l-6 6 6 6M16 6l6 6-6 6" />
+            </svg>
+            Access to code
+          </span>
+          <span className="hidden h-4 w-px bg-zinc-200 sm:block" />
+          <span className="flex items-center gap-2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
+              <rect x="5" y="11" width="14" height="9" rx="1.5" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            </svg>
+            Copy. Learn. Build.
+          </span>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="mt-10 w-full">
+        <SearchBar defaultValue={q ?? ""} />
       </div>
 
       {/* Gallery */}
-      <div className="mt-10">
+      <div className="mt-8">
         {sites.length === 0 && (
-          <p className="text-sm text-zinc-400">Nessun sito pubblicato al momento. Torna presto!</p>
+          <p className="text-sm text-zinc-400">
+            {q ? `No sites match "${q}".` : "No sites published yet. Check back soon!"}
+          </p>
         )}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

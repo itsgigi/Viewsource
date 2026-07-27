@@ -18,7 +18,7 @@ export async function GET(
 
   const section = await prisma.section.findUnique({ where: { id: sectionId } });
   if (!section) {
-    return NextResponse.json({ error: "Sezione non trovata" }, { status: 404 });
+    return NextResponse.json({ error: "Section not found" }, { status: 404 });
   }
 
   return NextResponse.json(serialize(section));

@@ -4,6 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+interface AwwwardsData {
+  url: string;
+  title: string;
+  award: string | null;
+  awardDate: string | null;
+  tags: string[];
+}
+
 interface SiteDetail {
   id: string;
   name: string;
@@ -14,6 +22,8 @@ interface SiteDetail {
   description: string | null;
   cover: string | null;
   deployedUrl: string | null;
+  awwwardsUrl: string | null;
+  awwwards: AwwwardsData | null;
   _count: { sections: number };
   components: ComponentRow[];
 }
@@ -70,13 +80,13 @@ const STATUS_STYLE: Record<SectionRow["status"], string> = {
 };
 
 const CAPTURE_STAGE_LABEL: Record<CaptureProgress["stage"], string> = {
-  loading: "Apro la pagina…",
-  filmstriping: "Catturo la filmstrip di scroll…",
-  scrolling: "Scrollo la pagina per far scattare le reveal animation…",
-  detecting: "Rilevo le sezioni…",
-  shooting: "Catturo gli screenshot…",
-  labeling: "Etichetto le sezioni (LLM)…",
-  saving: "Salvo le sezioni e la descrizione del movimento…",
+  loading: "Opening the page…",
+  filmstriping: "Capturing the scroll filmstrip…",
+  scrolling: "Scrolling the page to trigger reveal animations…",
+  detecting: "Detecting sections…",
+  shooting: "Capturing screenshots…",
+  labeling: "Labeling sections (LLM)…",
+  saving: "Saving sections and the motion description…",
 };
 
 const KIND_BADGE: Record<ComponentRow["kind"], string> = {
@@ -107,10 +117,12 @@ export default function SiteDetailPage() {
   });
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  // Azione appena lanciata dal client, in attesa che il server la confermi
-  // come "in corso" — copre la finestra tra POST 202 e il primo onProgress
-  // reale (es. avvio del browser Playwright), durante la quale una singola
-  // lettura di stato mostrerebbe ancora tutto null.
+  const [awwwardsUrlInput, setAwwwardsUrlInput] = useState("");
+  const [awwwardsFetching, setAwwwardsFetching] = useState(false);
+  // Action just fired by the client, waiting for the server to confirm it
+  // as "in progress" — covers the window between the POST 202 and the first
+  // real onProgress (e.g. Playwright still launching the browser), during
+  // which a single status read would still show everything as null.
   const [pendingKind, setPendingKind] = useState<"capture" | "reconstruct" | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const everBusySeenRef = useRef(false);
@@ -123,13 +135,13 @@ export default function SiteDetailPage() {
       const res = await fetch(`/api/admin/sites/${id}`);
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        setLoadError(body?.error ?? `Impossibile caricare il sito (HTTP ${res.status})`);
+        setLoadError(body?.error ?? `Failed to load the site (HTTP ${res.status})`);
         return;
       }
       setLoadError(null);
       setSite(await res.json());
     } catch {
-      setLoadError("Impossibile raggiungere il server. È in esecuzione npm run dev?");
+      setLoadError("Could not reach the server. Is npm run dev running?");
     }
   }, [id]);
 
@@ -149,14 +161,20 @@ export default function SiteDetailPage() {
     loadProgress();
   }, [loadSite, loadSections, loadProgress]);
 
+  // Seed the input once from the loaded site; afterwards the input is the
+  // user's source of truth until they fetch again.
+  useEffect(() => {
+    if (site) setAwwwardsUrlInput((cur) => cur || site.awwwardsUrl || "");
+  }, [site]);
+
   const busy = !!progress.capturing || !!progress.reconstructing;
 
-  // Poll finché il server conferma una pipeline in corso, O finché un'azione
-  // è stata appena lanciata dal client ma il server non l'ha ancora
-  // "vista" (pendingKind): senza questo secondo caso, un poll che arriva
-  // prima del primo onProgress reale (es. Playwright non ha ancora finito
-  // di avviare il browser) mostrerebbe tutto null e il loop di polling non
-  // partirebbe mai, lasciando la UI bloccata in silenzio.
+  // Poll while the server confirms a pipeline in progress, OR while an
+  // action was just fired by the client but the server hasn't "seen" it
+  // yet (pendingKind): without this second case, a poll that arrives before
+  // the first real onProgress (e.g. Playwright hasn't finished launching
+  // the browser yet) would show everything as null and the polling loop
+  // would never start, leaving the UI silently stuck.
   useEffect(() => {
     if (!busy && !pendingKind) return;
 
@@ -170,8 +188,8 @@ export default function SiteDetailPage() {
     };
   }, [busy, pendingKind, loadProgress, loadSections]);
 
-  // Traccia se il server ha mai confermato l'azione in corso, e chiude
-  // pendingKind quando l'azione risulta conclusa (o va in timeout).
+  // Tracks whether the server has ever confirmed the action is running, and
+  // clears pendingKind once the action is done (or times out).
   useEffect(() => {
     if (!pendingKind) return;
 
@@ -181,7 +199,7 @@ export default function SiteDetailPage() {
     }
 
     if (everBusySeenRef.current) {
-      // Era partita e ora il server dice che non è più in corso: finita.
+      // It had started and now the server says it's no longer running: done.
       setPendingKind(null);
       everBusySeenRef.current = false;
       loadSite();
@@ -192,7 +210,7 @@ export default function SiteDetailPage() {
     if (Date.now() - pendingSinceRef.current > PENDING_TIMEOUT_MS) {
       setPendingKind(null);
       setActionError(
-        "Non risulta partita dopo 30s. Controlla il terminale locale (npm run dev) per errori."
+        "Doesn't appear to have started after 30s. Check the local terminal (npm run dev) for errors."
       );
     }
   }, [pendingKind, busy, progress, loadSite, loadSections]);
@@ -203,22 +221,22 @@ export default function SiteDetailPage() {
       const res = await fetch(`/api/admin/sites/${id}/sections/${kind}`, { method: "POST" });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        setActionError(body?.error ?? "Operazione fallita");
+        setActionError(body?.error ?? "Operation failed");
         return;
       }
       everBusySeenRef.current = false;
       pendingSinceRef.current = Date.now();
       setPendingKind(kind);
-      // Il lavoro vero gira in background: comincia subito a fare polling.
+      // The real work runs in the background: start polling right away.
       loadProgress();
     } catch {
-      setActionError("Impossibile raggiungere il server.");
+      setActionError("Could not reach the server.");
     }
   }
 
-  // Se manca lo schema (utente scrive "example.com" invece di "https://…"),
-  // z.string().url() lato server rifiuta con 400 — meglio normalizzare qui
-  // che far fallire silenziosamente il salvataggio.
+  // If the scheme is missing (user types "example.com" instead of
+  // "https://…"), z.string().url() on the server rejects with 400 — better
+  // to normalize here than let the save silently fail.
   function normalizeUrl(raw: string): string | null {
     const trimmed = raw.trim();
     if (!trimmed) return null;
@@ -235,8 +253,31 @@ export default function SiteDetailPage() {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => null);
-      setActionError(body?.error ? JSON.stringify(body.error) : `Salvataggio fallito (HTTP ${res.status})`);
-      await loadSite(); // torna al valore reale, l'update ottimistico era sbagliato
+      setActionError(body?.error ? JSON.stringify(body.error) : `Save failed (HTTP ${res.status})`);
+      await loadSite(); // revert to the real value, the optimistic update was wrong
+    }
+  }
+
+  async function fetchAwwwards() {
+    setActionError(null);
+    setAwwwardsFetching(true);
+    try {
+      const res = await fetch(`/api/admin/sites/${id}/awwwards`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ awwwardsUrl: awwwardsUrlInput.trim() || null }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        setActionError(body?.error ?? `Awwwards fetch failed (HTTP ${res.status})`);
+        return;
+      }
+      // The awwwards route returns a plain Site row (no `components`/`_count`
+      // relations) — merge just the changed fields instead of replacing the
+      // whole object, or those relations would vanish from state.
+      setSite((s) => (s ? { ...s, awwwardsUrl: body.awwwardsUrl, awwwards: body.awwwards } : s));
+    } finally {
+      setAwwwardsFetching(false);
     }
   }
 
@@ -253,7 +294,7 @@ export default function SiteDetailPage() {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => null);
-      setActionError(body?.error ? JSON.stringify(body.error) : `Salvataggio fallito (HTTP ${res.status})`);
+      setActionError(body?.error ? JSON.stringify(body.error) : `Save failed (HTTP ${res.status})`);
       await loadSite();
     }
   }
@@ -293,20 +334,20 @@ export default function SiteDetailPage() {
           onClick={loadSite}
           className="mt-3 rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white"
         >
-          Riprova
+          Retry
         </button>
       </div>
     );
   }
 
   if (!site) {
-    return <div className="p-8 text-sm text-gray-500">Caricamento…</div>;
+    return <div className="p-8 text-sm text-gray-500">Loading…</div>;
   }
 
   return (
     <div className="mx-auto max-w-5xl p-8">
       <Link href="/admin" className="text-sm text-gray-500 hover:text-gray-800">
-        ← Torna alla dashboard
+        ← Back to dashboard
       </Link>
 
       <div className="mt-4 flex items-start justify-between gap-4">
@@ -322,21 +363,21 @@ export default function SiteDetailPage() {
             href={`/admin/sites/${id}/reconstruction`}
             className="rounded-md bg-violet-600 px-3 py-2 text-sm font-medium text-white"
           >
-            Studio di ricostruzione →
+            Reconstruction studio →
           </Link>
           <button
             onClick={() => runAction("capture")}
             disabled={busy || pendingKind !== null || site.sourceType !== "url"}
             className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
-            {progress.capturing || pendingKind === "capture" ? "Cattura in corso…" : "Cattura sezioni"}
+            {progress.capturing || pendingKind === "capture" ? "Capturing…" : "Capture sections"}
           </button>
           {sections.some((s) => s.status === "captured") && (
             <Link
               href={`/admin/sites/${id}/boundaries`}
               className="rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-white"
             >
-              Rivedi confini ({sections.filter((s) => s.status === "captured").length})
+              Review boundaries ({sections.filter((s) => s.status === "captured").length})
             </Link>
           )}
           <button
@@ -344,7 +385,7 @@ export default function SiteDetailPage() {
             disabled={busy || pendingKind !== null || sections.length === 0}
             className="rounded-md bg-violet-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
-            {progress.reconstructing || pendingKind === "reconstruct" ? "Ricostruzione in corso…" : "Ricostruisci tutte"}
+            {progress.reconstructing || pendingKind === "reconstruct" ? "Reconstructing…" : "Reconstruct all"}
           </button>
         </div>
       </div>
@@ -353,13 +394,13 @@ export default function SiteDetailPage() {
         <p className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700">{actionError}</p>
       )}
 
-      {/* Schermata discorsiva: cosa sta succedendo, in tempo reale */}
+      {/* Narrative status: what's happening, in real time */}
       {pendingKind && !busy && (
         <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 animate-pulse rounded-full bg-gray-900" />
             <p className="text-sm font-medium text-gray-900">
-              {pendingKind === "capture" ? "Avvio il browser (Playwright)…" : "Avvio la ricostruzione…"}
+              {pendingKind === "capture" ? "Launching the browser (Playwright)…" : "Starting the reconstruction…"}
             </p>
           </div>
         </div>
@@ -374,7 +415,7 @@ export default function SiteDetailPage() {
           </div>
           {progress.capturing.stage === "shooting" && progress.capturing.total ? (
             <p className="mt-1 text-xs text-gray-500">
-              {progress.capturing.found ?? 0} / {progress.capturing.total} sezioni
+              {progress.capturing.found ?? 0} / {progress.capturing.total} sections
             </p>
           ) : null}
         </div>
@@ -384,8 +425,8 @@ export default function SiteDetailPage() {
         <div className="mt-4 rounded-lg border border-violet-200 bg-violet-50 p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-violet-900">
-              Ricostruzione {progress.reconstructing.done}/{progress.reconstructing.total}
-              {progress.reconstructing.current ? ` — in corso: "${progress.reconstructing.current}"` : ""}
+              Reconstructing {progress.reconstructing.done}/{progress.reconstructing.total}
+              {progress.reconstructing.current ? ` — in progress: "${progress.reconstructing.current}"` : ""}
             </p>
           </div>
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-violet-100">
@@ -401,28 +442,28 @@ export default function SiteDetailPage() {
             />
           </div>
           <p className="mt-1 text-xs text-violet-500">
-            Ogni sezione può richiedere fino a 3 tentativi (chiamate LLM + render locale): può volerci qualche minuto.
+            Each section can take up to 3 attempts (LLM calls + local render): it can take a few minutes.
           </p>
         </div>
       )}
 
       {progress.error && (
         <p className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700">
-          {busy ? "Errore su una sezione (il resto continua): " : "Ultimo errore: "}
+          {busy ? "Error on one section (the rest continues): " : "Last error: "}
           {progress.error}
         </p>
       )}
 
       {site.sourceType === "git" && (
         <div className="mt-6 rounded-lg border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-900">Preview live</h2>
+          <h2 className="text-sm font-semibold text-gray-900">Live preview</h2>
           <p className="mt-1 text-xs text-gray-400">
-            URL del sito deployato — usato anche come fallback per lo screenshot di copertina se il dev server locale non parte.
+            URL of the deployed site — also used as a fallback for the cover screenshot if the local dev server doesn't start.
           </p>
           <input
             type="url"
             defaultValue={site.deployedUrl ?? ""}
-            placeholder="https://tuo-sito-deployato.vercel.app"
+            placeholder="https://your-deployed-site.vercel.app"
             onBlur={(e) => saveSiteField({ deployedUrl: normalizeUrl(e.target.value) })}
             className="mt-3 w-full max-w-md rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-900 outline-none focus:border-gray-400"
           />
@@ -430,7 +471,7 @@ export default function SiteDetailPage() {
             <iframe
               src={site.deployedUrl}
               className="mt-4 h-140 w-full rounded-md border border-gray-200"
-              title="Preview live"
+              title="Live preview"
             />
           )}
         </div>
@@ -442,7 +483,7 @@ export default function SiteDetailPage() {
           <textarea
             defaultValue={site.description ?? ""}
             rows={6}
-            placeholder="Descrizione del progetto (generata dall'AI, modificabile a mano)"
+            placeholder="Project description (AI-generated, editable by hand)"
             onBlur={(e) => saveSiteField({ description: e.target.value.trim() || null })}
             className="mt-3 w-full rounded-md border border-gray-200 p-3 text-sm text-gray-800 outline-none focus:border-gray-400"
           />
@@ -451,7 +492,55 @@ export default function SiteDetailPage() {
 
       {site.sourceType === "git" && (
         <div className="mt-6 rounded-lg border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-900">Cover del progetto</h2>
+          <h2 className="text-sm font-semibold text-gray-900">Awwwards</h2>
+          <p className="mt-1 text-xs text-gray-400">
+            Repo sites have no live URL to auto-discover from — paste the site&apos;s Awwwards page
+            (or leave empty to try auto-discovery from the deployed URL above) and fetch its info.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <input
+              type="url"
+              value={awwwardsUrlInput}
+              onChange={(e) => setAwwwardsUrlInput(e.target.value)}
+              placeholder="https://www.awwwards.com/sites/…"
+              className="w-full max-w-md rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-900 outline-none focus:border-gray-400"
+            />
+            <button
+              onClick={fetchAwwwards}
+              disabled={awwwardsFetching}
+              className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
+            >
+              {awwwardsFetching ? "Fetching…" : "Fetch info"}
+            </button>
+          </div>
+          {site.awwwards && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+              {site.awwwards.award && (
+                <span className="rounded-full bg-gray-900 px-2.5 py-1 font-medium text-white">
+                  🏆 {site.awwwards.award}
+                </span>
+              )}
+              {site.awwwards.tags?.slice(0, 6).map((t) => (
+                <span key={t} className="rounded-full border border-gray-200 px-2 py-0.5">
+                  {t}
+                </span>
+              ))}
+              <a
+                href={site.awwwards.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-gray-400 underline-offset-2 hover:text-gray-700 hover:underline"
+              >
+                View on awwwards.com ↗
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+
+      {site.sourceType === "git" && (
+        <div className="mt-6 rounded-lg border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-900">Project cover</h2>
           <div className="mt-3 flex items-center gap-3">
             {site.cover && (
               <img src={site.cover} alt="cover" className="h-14 w-24 shrink-0 rounded object-cover object-top" />
@@ -470,14 +559,14 @@ export default function SiteDetailPage() {
       {site.sourceType === "git" && (
         <div className="mt-6">
           <h2 className="text-sm font-medium text-gray-900">
-            Componenti estratti{" "}
+            Extracted components{" "}
             <span className="font-normal text-gray-400">
-              {site.components.length} totali · {site.components.filter((c) => !c.excluded).length} in vetrina
+              {site.components.length} total · {site.components.filter((c) => !c.excluded).length} showcased
             </span>
           </h2>
           <div className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-100">
             {site.components.length === 0 && (
-              <p className="p-6 text-sm text-gray-500">Nessun componente estratto ancora.</p>
+              <p className="p-6 text-sm text-gray-500">No components extracted yet.</p>
             )}
             {site.components.map((c) => (
               <div key={c.id} className="flex items-center gap-4 p-3">
@@ -504,7 +593,7 @@ export default function SiteDetailPage() {
                   <input
                     type="url"
                     defaultValue={c.cover ?? ""}
-                    placeholder="cover URL manuale (override preview)"
+                    placeholder="manual cover URL (overrides preview)"
                     onBlur={(e) => saveComponentCover(c, e.target.value)}
                     className="mt-1.5 w-full max-w-xs rounded border border-gray-200 px-2 py-1 text-xs text-gray-700 outline-none placeholder:text-gray-300 focus:border-gray-400"
                   />
@@ -515,7 +604,7 @@ export default function SiteDetailPage() {
                     checked={!c.excluded}
                     onChange={() => toggleComponentExcluded(c)}
                   />
-                  In vetrina pubblica
+                  In public showcase
                 </label>
               </div>
             ))}
@@ -524,7 +613,7 @@ export default function SiteDetailPage() {
       )}
 
       <div className="mt-6 flex items-center gap-2 text-sm text-gray-500">
-        <span>Ordina per:</span>
+        <span>Sort by:</span>
         {(["diffScore", "order", "name", "status"] as SortKey[]).map((key) => (
           <button
             key={key}
@@ -541,7 +630,7 @@ export default function SiteDetailPage() {
       <div className="mt-4 divide-y divide-gray-100 rounded-lg border border-gray-100">
         {sorted.length === 0 && (
           <p className="p-6 text-sm text-gray-500">
-            {progress.capturing ? "Cattura in corso, le sezioni compariranno a breve…" : "Nessuna sezione catturata ancora."}
+            {progress.capturing ? "Capturing in progress, sections will appear shortly…" : "No sections captured yet."}
           </p>
         )}
         {sorted.map((s) => {

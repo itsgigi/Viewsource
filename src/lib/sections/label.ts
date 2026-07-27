@@ -10,13 +10,13 @@ const labelModel = new ChatOpenAI({
 const labelsSchema = z.object({
   names: z
     .array(z.string())
-    .describe("Un nome breve e sensato per ciascuna sezione, nello stesso ordine di input"),
+    .describe("A short, sensible name for each section, in the same order as the input"),
 });
 
 /**
- * Etichetta ogni sezione catturata con un nome sensato ("Hero", "Features",
- * "Footer"...) in un'unica chiamata batch — economico, non serve un modello
- * vision-capable per questo passo (etichettatura da solo HTML, non screenshot).
+ * Labels each captured section with a sensible name ("Hero", "Features",
+ * "Footer"...) in a single batch call — cheap, no vision-capable model
+ * needed for this step (labeling from HTML only, not screenshots).
  */
 export async function labelSections(sections: GroundTruthSection[]): Promise<string[]> {
   if (sections.length === 0) return [];
@@ -31,12 +31,12 @@ export async function labelSections(sections: GroundTruthSection[]): Promise<str
     {
       role: "system",
       content:
-        'Assegna un nome breve e leggibile (es. "Hero", "Features", "Pricing", "Footer", "Navbar") a ciascuna sezione HTML di una pagina web, nell\'ordine in cui è fornita. Restituisci esattamente un nome per sezione, nello stesso ordine.',
+        'Assign a short, readable name (e.g. "Hero", "Features", "Pricing", "Footer", "Navbar") to each HTML section of a web page, in the order provided. Return exactly one name per section, in the same order.',
     },
     { role: "user", content: listing },
   ]);
 
-  // Difesa minima: se il modello restituisse un numero diverso di nomi,
-  // riallinea al numero di sezioni realmente catturate.
+  // Minimal safeguard: if the model returned a different number of names,
+  // realign to the actual number of captured sections.
   return sections.map((_, i) => result.names[i] ?? `Section ${i + 1}`);
 }

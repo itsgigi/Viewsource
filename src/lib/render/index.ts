@@ -110,7 +110,7 @@ export interface RenderOptions {
  */
 export async function renderComponent(code: string, opts: RenderOptions): Promise<Buffer> {
   if (!CAN_RENDER) {
-    throw new Error("renderComponent gira solo in locale (npm run dev), non è disponibile su Vercel.");
+    throw new Error("renderComponent runs local-only (npm run dev), it isn't available on Vercel.");
   }
 
   const url = await getServerUrl();

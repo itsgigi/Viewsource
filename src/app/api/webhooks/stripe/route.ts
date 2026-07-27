@@ -3,21 +3,21 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
 
-// Chiamata da Stripe, non da un browser: nessuna auth Clerk/admin qui
-// (eccezione esplicita, vedi src/proxy.ts). La sicurezza sta tutta nella
-// verifica della firma della richiesta.
+// Called by Stripe, not a browser: no Clerk/admin auth here
+// (explicit exception, see src/proxy.ts). Security relies entirely on
+// verifying the request signature.
 export async function POST(req: NextRequest) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) {
     return NextResponse.json(
-      { error: "STRIPE_WEBHOOK_SECRET non configurato" },
+      { error: "STRIPE_WEBHOOK_SECRET not configured" },
       { status: 500 }
     );
   }
 
   const signature = req.headers.get("stripe-signature");
   if (!signature) {
-    return NextResponse.json({ error: "Firma mancante" }, { status: 400 });
+    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
 
   const rawBody = await req.text();
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     event = getStripe().webhooks.constructEvent(rawBody, signature, secret);
   } catch (err) {
     return NextResponse.json(
-      { error: `Firma non valida: ${err instanceof Error ? err.message : err}` },
+      { error: `Invalid signature: ${err instanceof Error ? err.message : err}` },
       { status: 400 }
     );
   }
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
           ? session.payment_intent
           : session.payment_intent?.id ?? session.id;
 
-      // upsert: idempotente se Stripe reinvia lo stesso evento
+      // upsert: idempotent if Stripe resends the same event
       await prisma.unlock.upsert({
         where: { userId_siteId: { userId, siteId } },
         create: { userId, siteId, stripePaymentId: paymentId },

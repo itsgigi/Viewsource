@@ -29,15 +29,15 @@ async function handleAdmin(request: NextRequest) {
   if (valid) return NextResponse.next();
 
   if (pathname.startsWith("/api/")) {
-    return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   return NextResponse.redirect(new URL("/admin/login", request.url));
 }
 
-// Se CLERK_SECRET_KEY non è configurato, l'app resta buildabile e usabile:
-// si applica solo la logica admin, senza contesto Clerk (nessun accesso a
-// auth() per le route utente finché le chiavi non vengono aggiunte).
+// If CLERK_SECRET_KEY isn't configured, the app stays buildable and usable:
+// only the admin logic applies, with no Clerk context (no access to
+// auth() for user routes until the keys are added).
 const hasClerk = !!process.env.CLERK_SECRET_KEY;
 
 export const proxy = hasClerk
@@ -51,7 +51,7 @@ export const proxy = hasClerk
     };
 
 export const config = {
-  // Copre tutte le pagine (esclusi asset statici) + tutte le API, così
-  // Clerk può popolare auth() ovunque e la logica admin resta protetta.
+  // Covers all pages (excluding static assets) + all APIs, so Clerk can
+  // populate auth() everywhere and the admin logic stays protected.
   matcher: ["/((?!_next|.*\\..*).*)", "/(api|trpc)(.*)"],
 };

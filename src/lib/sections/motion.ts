@@ -2,15 +2,15 @@ import { ChatOpenAI } from "@langchain/openai";
 import type { Section } from "@/generated/prisma/client";
 import type { FilmstripFrame, MotionHint } from "@/lib/ingest/capture";
 
-// Descrizione del comportamento scroll-driven: non è il prodotto finale (lo
-// è il codice ricostruito), quindi un modello economico basta — l'admin la
-// rivede e corregge comunque prima che conti per qualcosa (Fase 5c).
+// Description of scroll-driven behavior: it's not the final product (the
+// reconstructed code is), so a cheap model is enough — the admin reviews
+// and corrects it anyway before it counts for anything (Phase 5c).
 const motionModel = new ChatOpenAI({
   model: process.env.OPENAI_MOTION_MODEL ?? "gpt-4o-mini",
   temperature: 0.2,
 });
 
-const SYSTEM_PROMPT = `Guardi una sequenza di screenshot (filmstrip) di UNA sezione di un sito web, presi a scroll progressivo dall'alto verso il basso. Descrivi in italiano, in poche frasi, cosa cambia visivamente da un frame al successivo: cosa entra/esce e con che direzione, cosa si sostituisce e a che punto approssimativo dello scroll, cosa sembra avere effetto parallasse (si muove a velocità diversa dallo scroll), cosa sembra sticky/pinned (resta fermo mentre il resto scorre). Se la sequenza non mostra cambiamenti degni di nota, dillo chiaramente e brevemente ("nessuna animazione evidente"). Non inventare comportamenti che non vedi nei frame. Massimo 5-6 frasi.`;
+const SYSTEM_PROMPT = `You're looking at a sequence of screenshots (filmstrip) of ONE section of a website, taken by scrolling progressively from top to bottom. Describe in English, in a few sentences, what visually changes from one frame to the next: what enters/exits and in which direction, what gets replaced and at roughly what point in the scroll, what seems to have a parallax effect (moves at a different speed than the scroll), what seems sticky/pinned (stays fixed while the rest scrolls). If the sequence shows no notable changes, say so clearly and briefly ("no obvious animation"). Don't invent behavior you don't see in the frames. Maximum 5-6 sentences.`;
 
 function parseJson<T>(value: string | null | unknown, fallback: T): T {
   if (value == null) return fallback;
@@ -23,14 +23,14 @@ function parseJson<T>(value: string | null | unknown, fallback: T): T {
 }
 
 /**
- * Genera la descrizione automatica del comportamento scroll-driven di una
- * sezione dalla sua filmstrip. Non chiede mai all'admin di scriverla da zero
- * — la mostra e lui la corregge dove serve (Fase 5c).
+ * Generates the automatic description of a section's scroll-driven
+ * behavior from its filmstrip. Never asks the admin to write it from
+ * scratch — shows it and lets them correct it where needed (Phase 5c).
  */
 export async function generateMotionDescription(section: Section): Promise<string> {
   const filmstrip = parseJson<FilmstripFrame[]>(section.filmstrip, []);
   if (filmstrip.length === 0) {
-    return "Nessun frame di scroll catturato per questa sezione: probabilmente non era visibile durante la cattura filmstrip, o è troppo corta perché lo scroll ci passi attraverso in modo apprezzabile.";
+    return "No scroll frames captured for this section: it was probably not visible during filmstrip capture, or it's too short for the scroll to pass through it noticeably.";
   }
 
   const motionHints = parseJson<MotionHint[]>(section.motionHints, []);
@@ -41,16 +41,16 @@ export async function generateMotionDescription(section: Section): Promise<strin
       ? motionHints
           .map(
             (h) =>
-              `- tra frame ${h.fromFrame} e ${h.toFrame}: regione cambiata (y ${h.pageTop}-${h.pageBottom}px pagina), ${(h.changedRatio * 100).toFixed(1)}% pixel diversi`
+              `- between frame ${h.fromFrame} and ${h.toFrame}: changed region (y ${h.pageTop}-${h.pageBottom}px on page), ${(h.changedRatio * 100).toFixed(1)}% pixels different`
           )
           .join("\n")
-      : "(nessuna differenza rilevante rilevata meccanicamente tra i frame)";
+      : "(no relevant difference mechanically detected between frames)";
 
   const textParts = [
-    `SEZIONE: "${section.name}"`,
-    `Librerie di animazione rilevate sulla pagina: ${detectedLibs.length > 0 ? detectedLibs.join(", ") : "nessuna"}`,
-    `Regioni cambiate tra frame consecutivi (calcolate meccanicamente, pixelmatch):\n${hintsText}`,
-    `Di seguito ${filmstrip.length} frame in ordine di scroll crescente.`,
+    `SECTION: "${section.name}"`,
+    `Animation libraries detected on the page: ${detectedLibs.length > 0 ? detectedLibs.join(", ") : "none"}`,
+    `Regions changed between consecutive frames (computed mechanically, pixelmatch):\n${hintsText}`,
+    `Below are ${filmstrip.length} frames in increasing scroll order.`,
   ].join("\n\n");
 
   const images = filmstrip.map((f) => ({

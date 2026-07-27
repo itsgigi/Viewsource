@@ -1,15 +1,15 @@
 /**
- * Stato "in corso" di cattura/ricostruzione, per sito, tenuto in memoria di
- * processo (il meccanismo gira solo in locale, un solo processo Node: niente
- * bisogno di persistenza). Il frontend fa polling su questo stato per
- * mostrare una schermata discorsiva invece di un semplice spinner bloccante.
+ * "In progress" capture/reconstruction state, per site, kept in process
+ * memory (the mechanism runs local-only, a single Node process: no need
+ * for persistence). The frontend polls this state to show a narrative
+ * screen instead of a plain blocking spinner.
  */
 
 import type { CaptureProgress } from "@/lib/ingest/capture";
 
-// Sovrainsieme di CaptureProgress: "labeling"/"saving" sono stage propri di
-// questo livello (dopo che il browser Playwright ha già chiuso), non del
-// modulo di cattura DOM.
+// Superset of CaptureProgress: "labeling"/"saving" are stages specific to
+// this level (after the Playwright browser has already closed), not to
+// the DOM capture module.
 export interface SectionCaptureProgress {
   stage: CaptureProgress["stage"] | "labeling" | "saving";
   found?: number;

@@ -2,25 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getStripe, getClerkUserId } from "@/lib/stripe";
 
-// Crea una Stripe Checkout Session per sbloccare a vita il codice di un
-// sito. Autenticata via Clerk (utente pubblico, separato dall'admin).
+// Creates a Stripe Checkout Session to permanently unlock a site's code.
+// Authenticated via Clerk (public user, separate from admin).
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const userId = await getClerkUserId();
   if (!userId) {
-    return NextResponse.json({ error: "Accedi per continuare" }, { status: 401 });
+    return NextResponse.json({ error: "Sign in to continue" }, { status: 401 });
   }
 
   const { slug } = await params;
   const site = await prisma.site.findUnique({ where: { slug } });
   if (!site || site.visibility !== "published") {
-    return NextResponse.json({ error: "Sito non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
   if (!site.price || site.price <= 0) {
     return NextResponse.json(
-      { error: "Questo sito non ha un prezzo di sblocco configurato" },
+      { error: "This site doesn't have an unlock price configured" },
       { status: 400 }
     );
   }
@@ -29,10 +29,10 @@ export async function POST(
     where: { userId_siteId: { userId, siteId: site.id } },
   });
   if (existing) {
-    return NextResponse.json({ error: "Già sbloccato" }, { status: 400 });
+    return NextResponse.json({ error: "Already unlocked" }, { status: 400 });
   }
 
-  // Riga utente pubblico: creata al bisogno, popolata con l'email Clerk se disponibile.
+  // Public user row: created on demand, populated with the Clerk email if available.
   let email: string | undefined;
   try {
     const { currentUser } = await import("@clerk/nextjs/server");
@@ -61,8 +61,8 @@ export async function POST(
               currency: "eur",
               unit_amount: site.price,
               product_data: {
-                name: `Sblocco codice — ${site.name}`,
-                description: "Accesso a vita al codice di tutti i componenti di questo sito.",
+                name: `Code unlock — ${site.name}`,
+                description: "Lifetime access to the code of every component on this site.",
               },
             },
           },

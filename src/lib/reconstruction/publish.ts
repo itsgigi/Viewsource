@@ -16,7 +16,7 @@ const promptSchema = z.object({
   prompt: z
     .string()
     .describe(
-      "Prompt completo da incollare in un LLM per ricreare la sezione: descrizione + specifiche visive/comportamentali + SNIPPET PARZIALI di codice come riferimento (mai il file completo)."
+      "Complete prompt to paste into an LLM to recreate the section: description + visual/behavioral specs + PARTIAL code SNIPPETS as reference (never the complete file)."
     ),
 });
 
@@ -25,17 +25,17 @@ function hashContent(content: string): string {
 }
 
 async function generatePrompt(sectionName: string, code: string, specMd: string | null): Promise<string> {
-  const snippet = code.length > 1_200 ? `${code.slice(0, 1_200)}\n/* ...(troncato)... */` : code;
+  const snippet = code.length > 1_200 ? `${code.slice(0, 1_200)}\n/* ...(truncated)... */` : code;
 
   const result = await promptModel.withStructuredOutput(promptSchema, { name: "section_prompt" }).invoke([
     {
       role: "system",
       content:
-        "Sei un esperto di prompt engineering per frontend. Scrivi un prompt autonomo (in italiano) che un utente incollerà in un altro LLM (Claude Code, Cursor, ChatGPT...) per ricreare QUESTA sezione UI in un suo progetto. Includi: cosa costruire, specifiche visive/comportamentali tratte dal contesto SPEC fornito, e SNIPPET PARZIALI di codice reale come riferimento (citali in un blocco di codice) — NON il codice completo, che è a pagamento. Istruisci il modello a integrarsi con le convenzioni del progetto ospite.",
+        "You are a prompt engineering expert for frontend development. Write a self-contained prompt (in English) that a user will paste into another LLM (Claude Code, Cursor, ChatGPT...) to recreate THIS UI section in their own project. Include: what to build, visual/behavioral specs drawn from the provided SPEC context, and PARTIAL real code SNIPPETS as reference (cite them in a code block) — NOT the complete code, which is paid. Instruct the model to integrate with the host project's conventions.",
     },
     {
       role: "user",
-      content: `SEZIONE: ${sectionName}\n\n${specMd ? `SPEC (contesto del sito):\n${specMd.slice(0, 6_000)}\n\n` : ""}SNIPPET PARZIALE DEL CODICE REALE:\n${snippet}`,
+      content: `SECTION: ${sectionName}\n\n${specMd ? `SPEC (site context):\n${specMd.slice(0, 6_000)}\n\n` : ""}PARTIAL REAL CODE SNIPPET:\n${snippet}`,
     },
   ]);
 
@@ -46,15 +46,15 @@ export interface SectionPublishState {
   file: string;
   name: string;
   approved: boolean;
-  published: boolean; // esiste già una riga Section per questo filePath
-  aligned: boolean; // hash del file corrente == contentHash pubblicato (sempre true se non ancora pubblicato)
+  published: boolean; // a Section row already exists for this filePath
+  aligned: boolean; // current file's hash == published contentHash (always true if not published yet)
 }
 
 /**
- * Confronta i file correnti in sections/ con l'ultimo contentHash pubblicato
- * su Section — usato dalla route admin per mostrare "allineato" / "modifiche
- * non pubblicate" per ciascuna sezione (requisito di modificabilità
- * permanente). Non richiede assertLocalOnly: legge solo file+DB.
+ * Compares the current files in sections/ against the last contentHash
+ * published on Section — used by the admin route to show "aligned" /
+ * "unpublished changes" for each section (permanent-editability
+ * requirement). Doesn't require assertLocalOnly: only reads file+DB.
  */
 export async function getSectionPublishState(slug: string, siteId: string): Promise<SectionPublishState[]> {
   const meta = await readMeta(slug);
@@ -79,18 +79,18 @@ export interface PublishSummary {
   created: number;
   updated: number;
   removed: number;
-  skipped: number; // invariate, non rigenerate
+  skipped: number; // unchanged, not regenerated
 }
 
 /**
- * Fase 6 — pubblicazione: idempotente e ri-eseguibile. Legge i file delle
- * sezioni approvate (meta.json), confronta l'hash col contentHash già
- * pubblicato (chiave logica: filePath), rigenera screenshot+prompt SOLO se
- * cambiato, upserta i record Section (mai duplica), rimuove le righe le cui
- * sezioni non sono più approvate/presenti.
+ * Phase 6 — publishing: idempotent and re-runnable. Reads the approved
+ * sections' files (meta.json), compares the hash against the already
+ * published contentHash (logical key: filePath), regenerates
+ * screenshot+prompt ONLY if changed, upserts the Section records (never
+ * duplicates), removes rows whose sections are no longer approved/present.
  */
 export async function publishReconstruction(slug: string, siteId: string): Promise<PublishSummary> {
-  assertLocalOnly("La pubblicazione");
+  assertLocalOnly("Publishing");
   setRunning(slug, { stage: "publishing" });
 
   try {
@@ -99,7 +99,7 @@ export async function publishReconstruction(slug: string, siteId: string): Promi
     const approved = meta.sections.filter((s) => s.approved);
 
     if (approved.length === 0) {
-      throw new Error("Nessuna sezione approvata da pubblicare");
+      throw new Error("No approved sections to publish");
     }
 
     const existingRows = await prisma.section.findMany({
@@ -115,8 +115,8 @@ export async function publishReconstruction(slug: string, siteId: string): Promi
     let updated = 0;
     let skipped = 0;
 
-    // Rimuove le righe pubblicate in precedenza le cui sezioni non sono più
-    // approvate/presenti (criterio 10: rimuovere una sezione + re-publish).
+    // Removes previously published rows whose sections are no longer
+    // approved/present (criterion 10: remove a section + re-publish).
     const toRemove = existingRows.filter((r) => !approvedFilePaths.has(r.filePath!));
     const removed = toRemove.length;
 
@@ -146,8 +146,8 @@ export async function publishReconstruction(slug: string, siteId: string): Promi
           continue;
         }
 
-        // Cambiata o nuova: rigenera screenshot (rig Playwright+Vite dello
-        // studio) e prompt gratuito (LLM, snippet parziali).
+        // Changed or new: regenerate screenshot (Playwright+Vite studio rig)
+        // and free prompt (LLM, partial snippets).
         const renderedBuffer = await renderStudio(slug, s.file);
         const renderScreenshot = await uploadImage(
           renderedBuffer,

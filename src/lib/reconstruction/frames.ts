@@ -10,9 +10,9 @@ const execFileAsync = promisify(execFile);
 
 const MIN_FRAMES = 8;
 const MAX_FRAMES = 60;
-// Soglie candidate in ordine di tentativo: si parte da 0.25 (spec); se
-// risultano troppi frame si sale (scena meno sensibile), se troppo pochi si
-// scende (scena più sensibile).
+// Candidate thresholds in attempt order: starts at 0.25 (spec); if too
+// many frames result, go up (less sensitive scene detection), if too few,
+// go down (more sensitive).
 const THRESHOLDS = [0.25, 0.4, 0.55, 0.15, 0.08];
 
 async function clearFramesDir(dir: string): Promise<void> {
@@ -23,9 +23,9 @@ async function clearFramesDir(dir: string): Promise<void> {
   );
 }
 
-/** Un tentativo di estrazione a una data soglia scene: restituisce i
- * timestamp (pts_time, secondi) di ciascun frame selezionato, nell'ordine in
- * cui compaiono nell'output — uno showinfo per frame che supera `select`. */
+/** One extraction attempt at a given scene threshold: returns the
+ * timestamps (pts_time, seconds) of each selected frame, in the order they
+ * appear in the output — one showinfo per frame that passes `select`. */
 async function runFfmpegAttempt(videoPath: string, dir: string, threshold: number): Promise<number[]> {
   await clearFramesDir(dir);
 
@@ -42,19 +42,19 @@ async function runFfmpegAttempt(videoPath: string, dir: string, threshold: numbe
       "vfr",
       "-q:v",
       "2",
-      // Video registrati da Chromium/Playwright (vp8/webm) sono spesso
-      // full-range YUV; l'encoder mjpeg dell'output .jpg lo rifiuta come
-      // "non-standard" a meno di allentare lo strict compliance — non
-      // tocca la qualità percepita, i frame sono solo riferimento interno.
+      // Videos recorded by Chromium/Playwright (vp8/webm) are often
+      // full-range YUV; the .jpg output's mjpeg encoder rejects it as
+      // "non-standard" unless strict compliance is relaxed — this doesn't
+      // affect perceived quality, the frames are only an internal reference.
       "-strict",
       "unofficial",
       outPattern,
     ],
     { maxBuffer: 1024 * 1024 * 32 }
   ).catch((err) => {
-    // ffmpeg scrive sempre su stderr anche in caso di successo: catturiamo
-    // anche l'errore per non perdere l'output diagnostico se il comando fallisce.
-    throw new Error(`ffmpeg fallito: ${err.stderr ?? err.message}`);
+    // ffmpeg always writes to stderr even on success: we capture the error
+    // too so we don't lose the diagnostic output if the command fails.
+    throw new Error(`ffmpeg failed: ${err.stderr ?? err.message}`);
   });
 
   const timestamps: number[] = [];
@@ -66,9 +66,9 @@ async function runFfmpegAttempt(videoPath: string, dir: string, threshold: numbe
 }
 
 /**
- * Estrazione frame con scene detection (Fase 1b): un frame ogni volta che la
- * scena cambia visivamente, non a intervallo fisso. Se il numero di frame è
- * fuori range [MIN_FRAMES, MAX_FRAMES], riprova con soglie diverse.
+ * Frame extraction with scene detection (Phase 1b): one frame every time the
+ * scene visually changes, not at a fixed interval. If the frame count is
+ * outside [MIN_FRAMES, MAX_FRAMES], retry with different thresholds.
  */
 export async function extractFrames(
   slug: string,

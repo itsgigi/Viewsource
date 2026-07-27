@@ -14,36 +14,36 @@ import {
 import { setRunning } from "./progress";
 import type { StaticExtraction } from "./staticExtract";
 
-// Stessa convenzione di src/lib/sections/reconstruct.ts: scaffold economico
-// (gpt-4o-mini), codice per-sezione su modello vision-capable (gpt-4o).
+// Same convention as src/lib/sections/reconstruct.ts: cheap scaffold
+// (gpt-4o-mini), per-section code on a vision-capable model (gpt-4o).
 const scaffoldModel = new ChatOpenAI({ model: process.env.OPENAI_MODEL ?? "gpt-4o-mini", temperature: 0 });
 const codeModel = new ChatOpenAI({ model: process.env.OPENAI_VISION_MODEL ?? "gpt-4o", temperature: 0.2 });
 
 const scaffoldSchema = z.object({
   sections: z
     .array(z.object({ name: z.string() }))
-    .describe("Elenco delle sezioni, nell'ordine di scorrimento, come descritte in SPEC.md sotto '## Sezioni'"),
+    .describe("List of sections, in scroll order, as described in SPEC.md under '## Sections'"),
 });
 
 const codeSchema = z.object({
   code: z
     .string()
-    .describe("Il componente React+TypeScript completo, in un singolo file, export default, senza props richieste"),
+    .describe("The complete React+TypeScript component, in a single file, export default, with no required props"),
   notes: z
     .string()
-    .describe("Cosa è stato ricostruito fedelmente e cosa è stato approssimato/inventato"),
+    .describe("What was faithfully reconstructed and what was approximated/invented"),
 });
 
-const SYSTEM_PROMPT = `Sei un frontend engineer senior. Ricostruisci UNA sezione di un sito web reale come un SINGOLO componente React + TypeScript, a partire dalla sua descrizione in SPEC.md (confermata da un umano) e da frame video della pagina reale.
+const SYSTEM_PROMPT = `You are a senior frontend engineer. Reconstruct ONE section of a real website as a SINGLE React + TypeScript component, based on its description in SPEC.md (confirmed by a human) and video frames of the real page.
 
-Regole di formato:
-- Output in un SINGOLO file autonomo con export default di un componente funzionale, SENZA props richieste.
-- Porta lo stile con un tag <style> nello stesso file (classi scoped/prefissate per evitare collisioni globali, es. "sec-hero-titolo"), basandoti sul CSS reale fornito quando pertinente — non tradurre tutto in valori inventati se hai un riferimento reale.
-- SENZA import da file esterni del progetto e SENZA librerie npm oltre a "react" — TRANNE "gsap" e "framer-motion", disponibili SOLO se elencate tra le librerie rilevate: importale solo in quel caso, altrimenti animazioni via CSS/@keyframes.
-- Media: se l'inventario indica un video per questo tipo di contenuto, genera un tag <video> con un URL reale dall'inventario — MAI un <img> al suo posto. Per loghi/brand usa un placeholder neutro mantenendo il layout.
-- Le animazioni devono risolversi al loro stato visivo finale poco dopo il mount, SENZA dipendere da uno scroll reale: la fedeltà è giudicata da uno screenshot statico post-mount.
-- Codice production-quality: tipizzato, accessibile, responsive.
-- Nelle note dichiara sempre esplicitamente cosa è stato approssimato o inventato per mancanza di informazioni certe.`;
+Format rules:
+- Output in a SINGLE self-contained file with an export default of a functional component, with NO required props.
+- Carry the styling in a <style> tag in the same file (scoped/prefixed classes to avoid global collisions, e.g. "sec-hero-title"), based on the real CSS provided when relevant — don't translate everything into made-up values if you have a real reference.
+- NO imports from external project files and NO npm libraries besides "react" — EXCEPT "gsap" and "framer-motion", available ONLY if listed among the detected libraries: import them only in that case, otherwise use CSS/@keyframes for animations.
+- Media: if the inventory indicates a video for this type of content, generate a <video> tag with a real URL from the inventory — NEVER an <img> instead. For logos/brand use a neutral placeholder while keeping the layout.
+- Animations must settle into their final visual state shortly after mount, WITHOUT depending on a real scroll: fidelity is judged from a static post-mount screenshot.
+- Production-quality code: typed, accessible, responsive.
+- In the notes, always explicitly state what was approximated or invented due to missing certain information.`;
 
 function slugifyFilename(name: string, index: number): string {
   const pascal = name
@@ -61,19 +61,19 @@ function componentNameFor(filename: string): string {
 }
 
 /**
- * Fase 3: dalla SPEC.md confermata, scaffolda l'elenco ordinato delle
- * sezioni (chiamata economica), poi genera il codice di ciascuna (chiamata
- * vision-capable, frame + estrazione statica come riferimento). Scrive
- * page.tsx + sections/NN-Nome.tsx. Non è pensata per essere ri-eseguita dopo
- * che l'admin ha iniziato a modificare i file a mano (Fase 4 in poi).
+ * Phase 3: from the confirmed SPEC.md, scaffolds the ordered list of
+ * sections (cheap call), then generates each one's code (vision-capable
+ * call, frames + static extraction as reference). Writes page.tsx +
+ * sections/NN-Name.tsx. Not meant to be re-run once the admin has started
+ * hand-editing the files (Phase 4 onward).
  */
 export async function generateReconstruction(slug: string): Promise<void> {
-  assertLocalOnly("La generazione della demo");
+  assertLocalOnly("Demo generation");
   setRunning(slug, { stage: "generating" });
 
   try {
     const specMd = await readSpec(slug);
-    if (!specMd) throw new Error("SPEC.md non trovata — completa e conferma la Fase 2 prima di generare");
+    if (!specMd) throw new Error("SPEC.md not found — complete and confirm Phase 2 before generating");
 
     const meta = await readMeta(slug);
     const staticData: StaticExtraction | null = await fs
@@ -87,13 +87,13 @@ export async function generateReconstruction(slug: string): Promise<void> {
         {
           role: "system",
           content:
-            "Estrai l'elenco ordinato delle sezioni descritte in questo documento SPEC (una per ogni intestazione di terzo livello sotto '## Sezioni'), nello stesso ordine. Restituisci solo i nomi, esattamente come appaiono.",
+            "Extract the ordered list of sections described in this SPEC document (one per third-level heading under '## Sections'), in the same order. Return only the names, exactly as they appear.",
         },
         { role: "user", content: specMd },
       ]);
 
     if (scaffold.sections.length === 0) {
-      throw new Error("Nessuna sezione trovata in SPEC.md — verifica che contenga una sezione '## Sezioni'");
+      throw new Error("No sections found in SPEC.md — check that it contains a '## Sections' section");
     }
 
     const framesDirAbs = path.join(reconstructionDir(slug), "material", "frames");
@@ -129,17 +129,17 @@ export async function generateReconstruction(slug: string): Promise<void> {
             {
               type: "text" as const,
               text: [
-                `SEZIONE DA GENERARE: "${name}" (posizione ${i + 1} di ${scaffold.sections.length})`,
-                `SPEC.md COMPLETA (contesto):\n${specMd}`,
+                `SECTION TO GENERATE: "${name}" (position ${i + 1} of ${scaffold.sections.length})`,
+                `FULL SPEC.md (context):\n${specMd}`,
                 staticData
-                  ? `CSS REALE (fogli linkati + computed styles delle sezioni principali della pagina originale — riferimento, non struttura da rispecchiare 1:1):\n${JSON.stringify(staticData.sectionStyles).slice(0, 4_000)}`
+                  ? `REAL CSS (linked stylesheets + computed styles of the original page's main sections — reference, not a structure to mirror 1:1):\n${JSON.stringify(staticData.sectionStyles).slice(0, 4_000)}`
                   : "",
                 staticData
-                  ? `INVENTARIO MEDIA REALE (usa questi URL, non inventarne altri):\n${JSON.stringify(staticData.media).slice(0, 3_000)}`
+                  ? `REAL MEDIA INVENTORY (use these URLs, don't invent others):\n${JSON.stringify(staticData.media).slice(0, 3_000)}`
                   : "",
-                `LIBRERIE DI ANIMAZIONE RILEVATE SUL SITO: ${meta.detectedLibs.join(", ") || "nessuna — usa solo CSS/@keyframes"}`,
-                `PALETTE: ${meta.palette.join(", ") || "n/d"}`,
-                `FONT: ${meta.fonts.join(", ") || "n/d"}`,
+                `ANIMATION LIBRARIES DETECTED ON THE SITE: ${meta.detectedLibs.join(", ") || "none — use only CSS/@keyframes"}`,
+                `PALETTE: ${meta.palette.join(", ") || "n/a"}`,
+                `FONTS: ${meta.fonts.join(", ") || "n/a"}`,
               ]
                 .filter(Boolean)
                 .join("\n\n"),

@@ -2,8 +2,8 @@ import { z } from "zod";
 import { Firecrawl } from "firecrawl";
 import { ChatOpenAI } from "@langchain/openai";
 
-// Modulo fail-soft: nessuna funzione deve mai bloccare l'ingestion.
-// Ogni errore degrada a null / array vuoto, come per gli screenshot.
+// Fail-soft module: no function should ever block ingestion.
+// Every error degrades to null / empty array, same as for screenshots.
 
 const firecrawl = new Firecrawl({ apiKey: process.env.FIRECRAWL_API_KEY! });
 
@@ -32,15 +32,15 @@ export interface AwwwardsData {
   gallery: { label: string; imageUrl: string }[];
 }
 
-// Nota: OpenAI structured output in modalità strict non supporta .optional()
-// né z.record — tutti i campi facoltativi devono essere .nullable().
+// Note: OpenAI structured output in strict mode supports neither .optional()
+// nor z.record — all optional fields must be .nullable().
 const awwwardsSchema = z.object({
-  title: z.string().describe("Nome del sito come appare sulla pagina Awwwards"),
+  title: z.string().describe("Site name as it appears on the Awwwards page"),
   award: z
     .string()
     .nullable()
-    .describe("Premio principale, es. 'Site of the Day', 'Honorable Mention', 'Developer Award'"),
-  awardDate: z.string().nullable().describe("Data del premio se indicata, es. 'Jul 14, 2026'"),
+    .describe("Main award, e.g. 'Site of the Day', 'Honorable Mention', 'Developer Award'"),
+  awardDate: z.string().nullable().describe("Award date if shown, e.g. 'Jul 14, 2026'"),
   scores: z
     .object({
       design: z.number().nullable(),
@@ -49,22 +49,22 @@ const awwwardsSchema = z.object({
       content: z.number().nullable(),
       overall: z.number().nullable(),
     })
-    .describe("Punteggi della giuria (0-10), null se non presenti"),
+    .describe("Jury scores (0-10), null if not present"),
   devScores: z
     .array(z.object({ name: z.string(), score: z.number() }))
     .nullable()
-    .describe("Eventuali punteggi Developer Award per categoria (semantics, accessibility, wpo...)"),
+    .describe("Any Developer Award scores by category (semantics, accessibility, wpo...)"),
   tags: z
     .array(z.string())
-    .describe("Tutti i tag: categorie (Architecture, Luxury...) e tecnologie (Next.js, Sanity...)"),
+    .describe("All tags: categories (Architecture, Luxury...) and technologies (Next.js, Sanity...)"),
   credits: z
     .array(z.object({ name: z.string(), url: z.string().nullable() }))
-    .describe("Crediti: designer, agenzie, sviluppatori con eventuale URL del profilo Awwwards"),
-  description: z.string().nullable().describe("Descrizione/claim del sito riportata sulla pagina"),
+    .describe("Credits: designers, agencies, developers with an Awwwards profile URL if any"),
+  description: z.string().nullable().describe("Site description/claim reported on the page"),
 });
 
 /**
- * Orchestratore: URL manuale (se valido) vince sulla discovery automatica.
+ * Orchestrator: a manual URL (if valid) wins over automatic discovery.
  */
 export async function fetchAwwwardsData(
   siteUrl: string,
@@ -82,10 +82,10 @@ export async function fetchAwwwardsData(
 }
 
 /**
- * Cerca la pagina Awwwards del sito via web search ristretta ad
- * awwwards.com (la ricerca testuale interna di Awwwards fallisce sui
- * nomi di dominio senza spazi, es. "houseofhoney"). La candidata è
- * accettata solo se il suo link "Visit site" punta allo stesso host.
+ * Looks up the site's Awwwards page via web search restricted to
+ * awwwards.com (Awwwards' internal text search fails on domain names
+ * without spaces, e.g. "houseofhoney"). A candidate is accepted only if
+ * its "Visit site" link points to the same host.
  */
 async function findAwwwardsPage(siteUrl: string): Promise<AwwwardsData | null> {
   const host = hostOf(siteUrl);
@@ -116,13 +116,13 @@ async function findAwwwardsPage(siteUrl: string): Promise<AwwwardsData | null> {
   return null;
 }
 
-// Risultato interno con host esterno per la verifica del match
+// Internal result with the external host, for match verification
 type ScrapedAwwwards = AwwwardsData & { externalHost: string | null };
 
 /**
- * Scrape + parse di una pagina awwwards.com/sites/<slug>.
- * Markdown → LLM structured output per i campi testuali;
- * HTML renderizzato → regex per palette e immagini gallery (lazy-loaded).
+ * Scrape + parse of an awwwards.com/sites/<slug> page.
+ * Markdown → LLM structured output for the textual fields;
+ * rendered HTML → regex for palette and gallery images (lazy-loaded).
  */
 async function scrapeAwwwardsPage(url: string): Promise<ScrapedAwwwards | null> {
   const page = await firecrawl
@@ -141,7 +141,7 @@ async function scrapeAwwwardsPage(url: string): Promise<ScrapedAwwwards | null> 
       {
         role: "system",
         content:
-          "Estrai i dati strutturati da questa pagina Awwwards di un sito web. Riporta solo ciò che è presente nella pagina, non inventare. I tag includono sia categorie sia tecnologie.",
+          "Extract the structured data from this Awwwards page for a website. Report only what's present on the page, don't make things up. Tags include both categories and technologies.",
       },
       { role: "user", content: page.markdown.slice(0, 20_000) },
     ])
@@ -157,7 +157,7 @@ async function scrapeAwwwardsPage(url: string): Promise<ScrapedAwwwards | null> 
   };
 }
 
-/** Palette: hex linkati come /websites/%23HEX/ */
+/** Palette: hex values linked as /websites/%23HEX/ */
 function extractPalette(html: string): string[] {
   const hexes = [...html.matchAll(/\/websites\/%23([0-9A-Fa-f]{6})/g)].map(
     (m) => `#${m[1].toUpperCase()}`
@@ -166,8 +166,8 @@ function extractPalette(html: string): string[] {
 }
 
 /**
- * Gallery: anchor /inspiration/<part>-<slug> con dentro (o vicino) un <img>
- * hydrated da assets.awwwards.com. Label derivata dallo slug della parte.
+ * Gallery: /inspiration/<part>-<slug> anchors with an <img> inside (or
+ * nearby) hydrated from assets.awwwards.com. Label derived from the part's slug.
  */
 function extractGallery(html: string): { label: string; imageUrl: string }[] {
   const out: { label: string; imageUrl: string }[] = [];
@@ -182,7 +182,7 @@ function extractGallery(html: string): { label: string; imageUrl: string }[] {
     if (seen.has(img[0])) continue;
     seen.add(img[0]);
 
-    // "contact-house-of-honey-1" → "contact"; via lo slug del sito in coda
+    // "contact-house-of-honey-1" → "contact"; strips the site's slug at the end
     const label = slug.split("-").slice(0, 2).join(" ");
     out.push({ label, imageUrl: img[0] });
     if (out.length >= 8) break;
@@ -190,7 +190,7 @@ function extractGallery(html: string): { label: string; imageUrl: string }[] {
   return out;
 }
 
-/** Host del link "Visit site" per verificare il match con il progetto. */
+/** Host of the "Visit site" link, to verify the match with the project. */
 function extractExternalHost(html: string, awwwardsUrl: string): string | null {
   const selfHost = "awwwards.com";
   const re = /<a[^>]+href="(https?:\/\/[^"]+)"[^>]*>(?:[\s\S]{0,200}?)(?:visit site|visit website)/gi;
@@ -198,7 +198,7 @@ function extractExternalHost(html: string, awwwardsUrl: string): string | null {
     const h = hostOf(m[1]);
     if (h && !h.includes(selfHost)) return h;
   }
-  // fallback: primo link esterno "visit" style con classe bt-visit (markup awwwards)
+  // fallback: first external "visit"-style link with class bt-visit (awwwards markup)
   const btVisit = html.match(/class="[^"]*bt-visit[^"]*"[^>]*href="(https?:\/\/[^"]+)"|href="(https?:\/\/[^"]+)"[^>]*class="[^"]*bt-visit[^"]*"/);
   const url = btVisit?.[1] ?? btVisit?.[2];
   if (url) {

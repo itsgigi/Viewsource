@@ -31,16 +31,15 @@ interface DragState {
 }
 
 /**
- * Boundary editor HITL (spec Parte 5a): schermata full-page con i tagli
- * proposti sovrapposti. Unisci/dividi/scarta/rinomina operano su righe
- * Section REALI in stato "captured" (src/lib/sections/boundaries.ts) — non
- * un draft ephemero, così l'editor ha ID stabili da PATCHare.
+ * HITL boundary editor (spec Part 5a): full-page screen with the proposed
+ * cuts overlaid. Merge/split/discard/rename operate on REAL Section rows
+ * in "captured" status (src/lib/sections/boundaries.ts) — not an ephemeral
+ * draft, so the editor has stable IDs to PATCH.
  *
- * Semplificazione pragmatica rispetto allo spec: "dividere trascinando una
- * linea di taglio" è implementato come click sul punto + conferma (non un
- * drag di una linea nuova da zero) — il drag vero è riservato al
- * ridimensionamento dei bordi esistenti. Più veloce da costruire, stesso
- * risultato funzionale, ancora "pochi click".
+ * Pragmatic simplification vs. the spec: "split by dragging a cut line" is
+ * implemented as click-on-point + confirm (not dragging a brand-new line
+ * from scratch) — real dragging is reserved for resizing existing edges.
+ * Faster to build, same functional result, still "a few clicks".
  */
 export default function BoundariesPage() {
   const { id } = useParams<{ id: string }>();
@@ -78,11 +77,11 @@ export default function BoundariesPage() {
     load();
   }, [load]);
 
-  // Guard sincrono oltre allo state `busy`: due click ravvicinati possono
-  // arrivare prima che React re-renderizzi con `busy=true`, e due
-  // merge/split/discard/resize concorrenti sullo stesso sito possono
-  // scontrarsi (avevamo visto un unique-constraint transitorio prima di
-  // rendere il vincolo deferrable — questo guard evita di doverci contare).
+  // Synchronous guard on top of the `busy` state: two quick clicks can land
+  // before React re-renders with `busy=true`, and two concurrent
+  // merge/split/discard/resize calls on the same site could collide (we'd
+  // seen a transient unique-constraint error before making the constraint
+  // deferrable — this guard avoids having to rely on that).
   const busyRef = useRef(false);
 
   const call = useCallback(
@@ -99,14 +98,14 @@ export default function BoundariesPage() {
         });
         if (!res.ok) {
           const b = await res.json().catch(() => null);
-          setError(b?.error ?? "Operazione fallita");
+          setError(b?.error ?? "Operation failed");
           return false;
         }
         await load();
         setSelected([]);
         return true;
       } catch {
-        setError("Impossibile raggiungere il server.");
+        setError("Could not reach the server.");
         return false;
       } finally {
         busyRef.current = false;
@@ -130,7 +129,7 @@ export default function BoundariesPage() {
   }
 
   async function handleDiscard(sectionId: string) {
-    if (!confirm("Scartare questa sezione? Non è recuperabile.")) return;
+    if (!confirm("Discard this section? It cannot be recovered.")) return;
     await call("discard", { sectionId });
   }
 
@@ -139,7 +138,7 @@ export default function BoundariesPage() {
     const rect = e.currentTarget.getBoundingClientRect();
     const localY = e.clientY - rect.top;
     const pageY = Math.round((section.boundsTop ?? 0) + localY / scale);
-    if (!confirm(`Dividere "${section.name}" a questo punto (y≈${pageY}px)?`)) return;
+    if (!confirm(`Split "${section.name}" at this point (y≈${pageY}px)?`)) return;
     call("split", { sectionId: section.id, atY: pageY });
   }
 
@@ -202,17 +201,17 @@ export default function BoundariesPage() {
   }
 
   if (!site) {
-    return <div className="p-8 text-sm text-gray-500">Caricamento…</div>;
+    return <div className="p-8 text-sm text-gray-500">Loading…</div>;
   }
 
   if (!site.sectionsFullPageScreenshot) {
     return (
       <div className="mx-auto max-w-2xl p-8">
         <Link href={`/admin/sites/${id}`} className="text-sm text-gray-500 hover:text-gray-800">
-          ← Torna al sito
+          ← Back to site
         </Link>
         <p className="mt-4 rounded-md bg-amber-50 p-4 text-sm text-amber-800">
-          Nessuno screenshot full-page disponibile: rilancia la cattura sezioni dal sito.
+          No full-page screenshot available: re-run section capture on the site.
         </p>
       </div>
     );
@@ -221,15 +220,15 @@ export default function BoundariesPage() {
   return (
     <div className="mx-auto max-w-5xl p-8">
       <Link href={`/admin/sites/${id}`} className="text-sm text-gray-500 hover:text-gray-800">
-        ← Torna al sito
+        ← Back to site
       </Link>
 
       <div className="mt-4 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Rivedi confini — {site.name}</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Review boundaries — {site.name}</h1>
           <p className="text-sm text-gray-500">
-            Unisci, dividi, scarta o rinomina le sezioni rilevate. Clicca una banda per dividerla, trascina i
-            bordi per ridimensionarla, seleziona due bande (checkbox) per unirle.
+            Merge, split, discard, or rename the detected sections. Click a band to split it, drag the
+            edges to resize it, select two bands (checkbox) to merge them.
           </p>
         </div>
         <button
@@ -237,7 +236,7 @@ export default function BoundariesPage() {
           disabled={selected.length !== 2 || busy}
           className="shrink-0 rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-40"
         >
-          Unisci selezionate ({selected.length}/2)
+          Merge selected ({selected.length}/2)
         </button>
       </div>
 
@@ -276,7 +275,7 @@ export default function BoundariesPage() {
                     isSelected ? "border-emerald-500 bg-emerald-500/20" : hue
                   }`}
                   style={{ top: top * scale, height: Math.max(4, height * scale) }}
-                  title="Clicca per dividere qui"
+                  title="Click to split here"
                 >
                   <div
                     onPointerDown={(e) => startDrag(e, s, "top")}
@@ -326,7 +325,7 @@ export default function BoundariesPage() {
                     <button
                       onClick={() => handleDiscard(s.id)}
                       className="text-red-500 hover:text-red-700"
-                      title="Scarta questa sezione"
+                      title="Discard this section"
                     >
                       ✕
                     </button>
@@ -337,7 +336,7 @@ export default function BoundariesPage() {
         </div>
 
         <div className="w-56 shrink-0 space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Sezioni ({sections.length})</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Sections ({sections.length})</p>
           {sections.map((s) => (
             <Link
               key={s.id}
@@ -350,7 +349,7 @@ export default function BoundariesPage() {
             </Link>
           ))}
           {sections.length === 0 && (
-            <p className="text-xs text-gray-400">Nessuna sezione ancora rivista — tutte già in annotazione o generate.</p>
+            <p className="text-xs text-gray-400">No sections reviewed yet — all already in annotation or generated.</p>
           )}
         </div>
       </div>

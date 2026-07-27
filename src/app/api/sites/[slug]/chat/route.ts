@@ -7,11 +7,11 @@ const bodySchema = z.object({
 });
 
 const COMING_SOON_ANSWER =
-  "La chat AI sui progetti è in arrivo — stiamo misurando l'interesse. " +
-  "Nel frattempo puoi esplorare i componenti e l'analisi.";
+  "AI chat about projects is coming soon — we're gauging interest. " +
+  "In the meantime you can explore the components and the analysis.";
 
-// Fake door test: registra l'intento e risponde con un messaggio fisso.
-// Il RAG vero resta disponibile solo lato admin.
+// Fake door test: logs the intent and replies with a fixed message.
+// The real RAG stays available admin-side only.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
@@ -23,7 +23,7 @@ export async function POST(
     select: { id: true, visibility: true },
   });
   if (!site || site.visibility !== "published") {
-    return NextResponse.json({ error: "Sito non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));

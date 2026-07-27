@@ -7,10 +7,10 @@ const chatModel = new ChatOpenAI({
   temperature: 0,
 });
 
-// Budget di componenti mandati all'LLM: i repo grandi possono estrarne
-// centinaia via AST. Quelli fuori budget restano `excluded: true` (default
-// alla creazione) — non "spariscono", restano ingeribili in futuro se si
-// alza il budget o si aggiunge una revisione manuale.
+// Budget of components sent to the LLM: large repos can extract hundreds
+// via AST. Ones outside the budget stay `excluded: true` (the default at
+// creation) — they don't "disappear", they remain ingestible in the future
+// if the budget is raised or a manual review is added.
 const MAX_CANDIDATES = 40;
 const MAX_IMAGES = 15;
 
@@ -18,39 +18,39 @@ const rankingSchema = z.object({
   projectDescription: z
     .string()
     .describe(
-      "Descrizione accurata del progetto in italiano: cosa fa, per chi, come è costruito. 2-4 paragrafi, basata sul package.json e sui componenti reali forniti, non inventata."
+      "Accurate project description in English: what it does, for whom, how it's built. 2-4 paragraphs, based on the package.json and the real components provided, not made up."
     ),
-  techStack: z.array(z.string()).describe("Tecnologie, framework e librerie rilevate dal progetto reale"),
+  techStack: z.array(z.string()).describe("Technologies, frameworks, and libraries detected from the real project"),
   components: z
     .array(
       z.object({
-        filePath: z.string().describe("Path esatto del file principale del componente, come fornito in input"),
+        filePath: z.string().describe("Exact path of the component's main file, as provided in the input"),
         worthy: z
           .boolean()
           .describe(
-            "true se il componente merita una vetrina pubblica: usato nelle pagine principali, stile proprio, superficie visiva significativa, non un wrapper banale di poche righe"
+            "true if the component deserves a public showcase: used on the main pages, has its own style, meaningful visual surface, not a trivial few-line wrapper"
           ),
         rank: z
           .number()
           .int()
-          .describe("Ordine di rilevanza tra i componenti worthy: 1 = il più rilevante. Ignorato se worthy è false."),
+          .describe("Relevance order among worthy components: 1 = most relevant. Ignored if worthy is false."),
         kind: z.enum(["layout", "section", "ui", "animation"]),
         description: z
           .string()
           .describe(
-            "Cosa fa, come si comporta, cosa lo rende riutilizzabile, note sull'integrazione. Solo se worthy è true, altrimenti stringa vuota."
+            "What it does, how it behaves, what makes it reusable, integration notes. Only if worthy is true, otherwise an empty string."
           ),
       })
     )
-    .describe("Un elemento per OGNI componente fornito in input, nello stesso ordine — nessuno va omesso"),
+    .describe("One item for EVERY component provided in the input, in the same order — none should be omitted"),
 });
 
 /**
- * Fase 4 della spec: qui, e solo qui, entra l'LLM per la pipeline repo.
- * I componenti sono già estratti deterministicamente (Fase 2, src/lib/ast) —
- * il compito dell'LLM è ordinarli per rilevanza, decidere quali meritano la
- * vetrina pubblica, classificarli e descriverli. Chiamata da runIngestion
- * DOPO che i Component (origin "ast") sono già stati persistiti.
+ * Spec Phase 4: this is the only place the LLM enters the repo pipeline.
+ * The components are already extracted deterministically (Phase 2, src/lib/ast) —
+ * the LLM's job is to rank them by relevance, decide which deserve the
+ * public showcase, classify them, and describe them. Called by runIngestion
+ * AFTER the Component rows (origin "ast") have already been persisted.
  */
 export async function analyzeRepoComponents(siteId: string): Promise<void> {
   const site = await prisma.site.findUniqueOrThrow({ where: { id: siteId } });
@@ -69,10 +69,10 @@ export async function analyzeRepoComponents(siteId: string): Promise<void> {
       const props = safeParse(c.propsSchema, []);
       const npmDeps = safeParse(c.npmDeps, []);
       const bundleFiles = safeParse<{ path: string }[]>(c.bundleFiles, []);
-      return `--- COMPONENTE filePath="${c.filePath}" nome="${c.name}" ---
+      return `--- COMPONENT filePath="${c.filePath}" name="${c.name}" ---
 Props: ${JSON.stringify(props)}
-Dipendenze npm: ${JSON.stringify(npmDeps)}
-File nel bundle: ${bundleFiles.map((f) => f.path).join(", ") || "solo il file principale"}`;
+npm dependencies: ${JSON.stringify(npmDeps)}
+Files in bundle: ${bundleFiles.map((f) => f.path).join(", ") || "main file only"}`;
     })
     .join("\n\n");
 
@@ -81,12 +81,12 @@ File nel bundle: ${bundleFiles.map((f) => f.path).join(", ") || "solo il file pr
     .filter((u): u is string => !!u)
     .slice(0, MAX_IMAGES);
 
-  const textContent = `Progetto: ${site.name} (${site.sourceUrl})
+  const textContent = `Project: ${site.name} (${site.sourceUrl})
 
 PACKAGE.JSON:
-${pkg ? JSON.stringify(pkg).slice(0, 4_000) : "non disponibile"}
+${pkg ? JSON.stringify(pkg).slice(0, 4_000) : "not available"}
 
-COMPONENTI ESTRATTI VIA AST (dati reali, deterministici):
+COMPONENTS EXTRACTED VIA AST (real, deterministic data):
 ${corpus}`;
 
   const userContent =
@@ -103,7 +103,7 @@ ${corpus}`;
     {
       role: "system",
       content:
-        "Sei un analista tecnico frontend esperto. Ricevi componenti React GIÀ estratti deterministicamente da un repo reale (props, dipendenze npm, bundle multi-file) — il tuo compito NON è trovarli, ma decidere quali meritano una vetrina pubblica, ordinarli per rilevanza, classificarli (layout/section/ui/animation) e descriverli. Preferisci componenti con stile proprio e superficie visiva significativa; scarta (worthy: false) i wrapper banali di poche righe. Se sono fornite immagini, sono screenshot reali ritagliati del componente nel progetto — usale come prova primaria, non solo il nome. Rispondi per OGNI componente fornito in input, nello stesso ordine, senza ometterne nessuno.",
+        "You are an expert frontend technical analyst. You're given React components ALREADY extracted deterministically from a real repo (props, npm dependencies, multi-file bundle) — your job is NOT to find them, but to decide which deserve a public showcase, rank them by relevance, classify them (layout/section/ui/animation), and describe them. Prefer components with their own style and meaningful visual surface; discard (worthy: false) trivial few-line wrappers. If images are provided, they are real cropped screenshots of the component in the project — use them as primary evidence, not just the name. Respond for EVERY component provided in the input, in the same order, without omitting any.",
     },
     { role: "user", content: userContent },
   ]);

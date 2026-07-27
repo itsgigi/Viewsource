@@ -62,6 +62,16 @@ async function runGitIngestionPipeline(site: Site) {
     });
   }
 
+  // Awwwards discovery needs a live URL to match against ("Visit site" host
+  // verification) — sourceUrl is the git repo, not the deployed site, so we
+  // use the repo's homepage metadata (or an already-set deployedUrl) instead.
+  // A manually-provided site.awwwardsUrl always works regardless, since a
+  // direct URL skips host verification entirely (see scrapeAwwwardsPage).
+  const awwwardsReferenceUrl = site.deployedUrl ?? metadata.homepage ?? null;
+  const awwwards = awwwardsReferenceUrl
+    ? await fetchAwwwardsData(awwwardsReferenceUrl, site.awwwardsUrl)
+    : null;
+
   await prisma.site.update({
     where: { id: site.id },
     data: {
@@ -74,6 +84,7 @@ async function runGitIngestionPipeline(site: Site) {
       // Solo se l'admin non l'ha già impostata a mano: un re-ingest non deve
       // sovrascrivere un deployedUrl scelto manualmente in un secondo momento.
       ...(!site.deployedUrl && metadata.homepage ? { deployedUrl: metadata.homepage } : {}),
+      ...(awwwards ? { awwwards: awwwards as unknown as Prisma.InputJsonValue } : {}),
       metadata: {
         description: metadata.description,
         topics: metadata.topics,

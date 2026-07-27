@@ -5,10 +5,10 @@ import { ADMIN_COOKIE, verifySessionToken } from "@/lib/auth";
 import { anonymizeCapture, type ClonePreview } from "@/lib/ingest/anonymize";
 
 /**
- * Clone showcase navigabile (Fase D): HTML+CSS catturati (Fase A),
- * anonimizzati (Fase D, lazy con cache su Site.clonePreview) e serviti in
- * un iframe sandboxed — niente allow-scripts: solo struttura/stile statici,
- * mai JS arbitrario del sito originale nel contesto della nostra app.
+ * Navigable clone showcase (Phase D): HTML+CSS captured (Phase A),
+ * anonymized (Phase D, lazy with cache on Site.clonePreview) and served in
+ * a sandboxed iframe — no allow-scripts: static structure/style only,
+ * never arbitrary JS from the original site in our app's context.
  */
 export default async function PreviewPage({
   params,
@@ -33,7 +33,7 @@ export default async function PreviewPage({
     try {
       preview = await anonymizeCapture(site.id);
     } catch (err) {
-      error = err instanceof Error ? err.message : "Errore sconosciuto";
+      error = err instanceof Error ? err.message : "Unknown error";
     }
   }
 
@@ -41,7 +41,7 @@ export default async function PreviewPage({
     return (
       <main className="mx-auto max-w-2xl px-6 py-16 text-center">
         <p className="text-zinc-500">
-          Anteprima non disponibile{error ? `: ${error}` : "."}
+          Preview not available{error ? `: ${error}` : "."}
         </p>
       </main>
     );
@@ -51,9 +51,9 @@ export default async function PreviewPage({
     <div className="flex h-dvh flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 bg-white px-4 py-2 text-xs text-zinc-500">
         <span>
-          Clone dimostrativo e anonimizzato di <strong>{site.name}</strong> — struttura e stile
-          ricreati automaticamente, brand/loghi rimossi. Mitigazione best-effort, non una copia
-          legalmente immune.
+          Demonstrative, anonymized clone of <strong>{site.name}</strong> — structure and style
+          automatically recreated, brand/logos removed. Best-effort mitigation, not a legally
+          immune copy.
         </span>
         <a
           href={site.sourceUrl}
@@ -61,11 +61,11 @@ export default async function PreviewPage({
           rel="noreferrer"
           className="shrink-0 underline underline-offset-2 hover:text-zinc-900"
         >
-          Vedi il sito originale ↗
+          View original site ↗
         </a>
       </div>
       <iframe
-        title={`Clone preview di ${site.name}`}
+        title={`Clone preview of ${site.name}`}
         srcDoc={preview.html}
         sandbox="allow-same-origin"
         className="w-full flex-1 border-0 bg-white"

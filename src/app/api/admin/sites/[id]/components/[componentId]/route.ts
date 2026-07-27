@@ -5,10 +5,10 @@ import { prisma } from "@/lib/db";
 const patchSchema = z.object({
   cover: z.string().url().nullable().optional(),
   coverType: z.enum(["image", "video"]).nullable().optional(),
-  excluded: z.boolean().optional(), // nasconde/mostra il componente nella griglia pubblica (Fase 6)
+  excluded: z.boolean().optional(), // hides/shows the component in the public grid (Phase 6)
 });
 
-// Aggiorna la cover (foto/video) di un componente dal pannello admin
+// Updates a component's cover (photo/video) from the admin panel
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; componentId: string }> }
@@ -29,7 +29,7 @@ export async function PATCH(
 
   if (!component) {
     return NextResponse.json(
-      { error: "Componente non trovato" },
+      { error: "Component not found" },
       { status: 404 }
     );
   }

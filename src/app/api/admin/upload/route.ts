@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 
-// Upload media (cover di siti e componenti) su Vercel Blob.
-// Protetto dal proxy (path /api/admin/*). Richiede BLOB_READ_WRITE_TOKEN.
-// Nota: su Vercel il body delle serverless function è limitato a ~4.5MB;
-// per video più pesanti caricare altrove e incollare l'URL.
+// Upload media (site and component covers) to Vercel Blob.
+// Protected by the proxy (path /api/admin/*). Requires BLOB_READ_WRITE_TOKEN.
+// Note: on Vercel the serverless function body is limited to ~4.5MB;
+// for heavier videos, upload elsewhere and paste the URL.
 export async function POST(req: NextRequest) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return NextResponse.json(
-      { error: "BLOB_READ_WRITE_TOKEN non configurato" },
+      { error: "BLOB_READ_WRITE_TOKEN not configured" },
       { status: 500 }
     );
   }
@@ -17,12 +17,12 @@ export async function POST(req: NextRequest) {
   const file = form?.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
-    return NextResponse.json({ error: "File mancante" }, { status: 400 });
+    return NextResponse.json({ error: "Missing file" }, { status: 400 });
   }
 
   if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
     return NextResponse.json(
-      { error: "Solo immagini o video" },
+      { error: "Images or videos only" },
       { status: 400 }
     );
   }

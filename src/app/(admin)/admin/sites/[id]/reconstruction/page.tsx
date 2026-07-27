@@ -52,11 +52,11 @@ function Spinner() {
 }
 
 const PHASE_LABEL: Record<ReconstructionMeta["phase"], string> = {
-  collecting: "Raccolta materiale",
-  analyzed: "Analisi confermata",
-  generated: "Demo generata",
-  refining: "In rifinitura",
-  published: "Pubblicato",
+  collecting: "Gathering material",
+  analyzed: "Analysis confirmed",
+  generated: "Demo generated",
+  refining: "Refining",
+  published: "Published",
 };
 
 export default function ReconstructionPage() {
@@ -114,11 +114,12 @@ export default function ReconstructionPage() {
   }, [id, meta?.phase]);
 
   const busy = !!progress.running;
-  // `busy` riflette lo stato confermato dal server (poll ogni 1.5s): appena
-  // dopo il click c'è una finestra in cui il server non ha ancora scritto
-  // `running`, durante la quale `busy` resta false. `busyAction` è settato
-  // sincrono al click — usarlo insieme a `busy` chiude quel buco (bottoni
-  // bloccati e loader visibili da subito, non solo dopo il primo poll).
+  // `busy` reflects the state confirmed by the server (polled every 1.5s):
+  // right after the click there's a window where the server hasn't written
+  // `running` yet, during which `busy` stays false. `busyAction` is set
+  // synchronously on click — using it together with `busy` closes that gap
+  // (buttons disabled and loaders visible right away, not just after the
+  // first poll).
   const anyBusy = busy || !!busyAction;
 
   useEffect(() => {
@@ -201,7 +202,7 @@ export default function ReconstructionPage() {
       body: JSON.stringify({ file: section.file, referenceFrame: section.referenceFrame }),
     });
     const data = await res.json();
-    setVerifyResults((v) => ({ ...v, [section.file]: res.ok ? data : { error: data.error ?? "Errore" } }));
+    setVerifyResults((v) => ({ ...v, [section.file]: res.ok ? data : { error: data.error ?? "Error" } }));
   }
 
   async function publish() {
@@ -212,24 +213,24 @@ export default function ReconstructionPage() {
     setBusyAction(null);
     setPublishSummary(
       res.ok
-        ? `Pubblicato: ${data.created} create, ${data.updated} aggiornate, ${data.removed} rimosse, ${data.skipped} invariate.`
-        : `Errore: ${data.error}`
+        ? `Published: ${data.created} created, ${data.updated} updated, ${data.removed} removed, ${data.skipped} unchanged.`
+        : `Error: ${data.error}`
     );
     await load();
   }
 
-  if (loading) return <div className="p-8 text-sm text-gray-500">Caricamento…</div>;
+  if (loading) return <div className="p-8 text-sm text-gray-500">Loading…</div>;
 
   return (
     <div className="mx-auto max-w-4xl p-8">
       <Link href={`/admin/sites/${id}`} className="text-sm text-gray-500 hover:text-gray-800">
-        ← Torna al sito
+        ← Back to site
       </Link>
 
       <div className="mt-4 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Studio — {siteName}</h1>
-          <p className="text-sm text-gray-500">Ricostruzione assistita, file veri in /reconstructions/{meta?.slug ?? "…"}/</p>
+          <p className="text-sm text-gray-500">Assisted reconstruction, real files in /reconstructions/{meta?.slug ?? "…"}/</p>
         </div>
         {meta && (
           <span className="shrink-0 rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">
@@ -245,8 +246,8 @@ export default function ReconstructionPage() {
         <p className="mt-4 flex items-center gap-2 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
           <Spinner />
           {progress.running
-            ? `In corso: ${progress.running.stage}${progress.running.detail ? ` — ${progress.running.detail}` : ""}`
-            : "Avvio…"}
+            ? `Running: ${progress.running.stage}${progress.running.detail ? ` — ${progress.running.detail}` : ""}`
+            : "Starting…"}
         </p>
       )}
 
@@ -257,15 +258,15 @@ export default function ReconstructionPage() {
           className="mt-6 flex items-center gap-1.5 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
         >
           {busyAction === "start" && <Spinner />}
-          Avvia ricostruzione
+          Start reconstruction
         </button>
       )}
 
       {meta && (
         <>
-          {/* Fase 1: raccolta */}
+          {/* Phase 1: collection */}
           <section className="mt-8 rounded-lg border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-900">Fase 1 — Raccolta materiale</h2>
+            <h2 className="text-sm font-semibold text-gray-900">Phase 1 — Gather material</h2>
 
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
               <label
@@ -274,7 +275,7 @@ export default function ReconstructionPage() {
                 }`}
               >
                 {busyAction === "upload-video" && <Spinner />}
-                {meta.video.human ? "Video umano ✓ (ricarica)" : "Carica video umano"}
+                {meta.video.human ? "Human video ✓ (re-upload)" : "Upload human video"}
                 <input
                   type="file"
                   accept="video/*"
@@ -290,7 +291,7 @@ export default function ReconstructionPage() {
                 className="flex items-center gap-1.5 rounded-md border border-gray-200 px-3 py-1.5 text-gray-700 hover:border-gray-400 disabled:opacity-40"
               >
                 {busyAction === "video/scripted" && <Spinner />}
-                {meta.video.scripted ? "Video scriptato ✓ (rigenera)" : "Genera video scriptato"}
+                {meta.video.scripted ? "Scripted video ✓ (regenerate)" : "Generate scripted video"}
               </button>
 
               <button
@@ -299,7 +300,7 @@ export default function ReconstructionPage() {
                 className="flex items-center gap-1.5 rounded-md border border-gray-200 px-3 py-1.5 text-gray-700 hover:border-gray-400 disabled:opacity-40"
               >
                 {busyAction === "frames" && <Spinner />}
-                Estrai frame ({meta.frames.length})
+                Extract frames ({meta.frames.length})
               </button>
 
               <button
@@ -308,7 +309,7 @@ export default function ReconstructionPage() {
                 className="flex items-center gap-1.5 rounded-md border border-gray-200 px-3 py-1.5 text-gray-700 hover:border-gray-400 disabled:opacity-40"
               >
                 {busyAction === "static" && <Spinner />}
-                Estrai dati statici
+                Extract static data
               </button>
             </div>
 
@@ -328,9 +329,9 @@ export default function ReconstructionPage() {
             )}
           </section>
 
-          {/* Fase 2: analisi */}
+          {/* Phase 2: analysis */}
           <section className="mt-6 rounded-lg border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-900">Fase 2 — Analisi</h2>
+            <h2 className="text-sm font-semibold text-gray-900">Phase 2 — Analysis</h2>
 
             <button
               onClick={() => fireAndPoll("analyze")}
@@ -338,7 +339,7 @@ export default function ReconstructionPage() {
               className="mt-3 flex items-center gap-1.5 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-40"
             >
               {busyAction === "analyze" && <Spinner />}
-              Analizza (vision)
+              Analyze (vision)
             </button>
 
             {(specContent || meta.phase !== "collecting") && (
@@ -348,7 +349,7 @@ export default function ReconstructionPage() {
                   onChange={(e) => setSpecContent(e.target.value)}
                   rows={14}
                   className="w-full rounded-md border border-gray-200 p-3 font-mono text-xs text-gray-800 outline-none focus:border-gray-400"
-                  placeholder="SPEC.md apparirà qui dopo l'analisi — correggila liberamente prima di confermare."
+                  placeholder="SPEC.md will appear here after analysis — edit it freely before confirming."
                 />
                 <div className="mt-2 flex gap-2">
                   <button
@@ -357,7 +358,7 @@ export default function ReconstructionPage() {
                     className="flex items-center gap-1.5 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:border-gray-400 disabled:opacity-40"
                   >
                     {busyAction === "save-spec" && <Spinner />}
-                    Salva bozza
+                    Save draft
                   </button>
                   <button
                     onClick={() => saveSpec(true)}
@@ -365,16 +366,16 @@ export default function ReconstructionPage() {
                     className="flex items-center gap-1.5 rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
                   >
                     {busyAction === "save-spec" && <Spinner />}
-                    Conferma SPEC
+                    Confirm SPEC
                   </button>
                 </div>
               </div>
             )}
           </section>
 
-          {/* Fase 3: generazione + preview */}
+          {/* Phase 3: generation + preview */}
           <section className="mt-6 rounded-lg border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-900">Fase 3-4 — Generazione &amp; preview live</h2>
+            <h2 className="text-sm font-semibold text-gray-900">Phase 3-4 — Generation &amp; live preview</h2>
 
             <button
               onClick={() => fireAndPoll("generate")}
@@ -382,20 +383,20 @@ export default function ReconstructionPage() {
               className="mt-3 flex items-center gap-1.5 rounded-md bg-violet-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
             >
               {busyAction === "generate" && <Spinner />}
-              {meta.sections.length > 0 ? "Rigenera demo (sovrascrive i file)" : "Genera demo"}
+              {meta.sections.length > 0 ? "Regenerate demo (overwrites files)" : "Generate demo"}
             </button>
 
             {previewUrl && (
               <div className="mt-4 overflow-hidden rounded-md border border-gray-200">
-                <iframe src={previewUrl} className="h-140 w-full" title="Preview studio" />
+                <iframe src={previewUrl} className="h-140 w-full" title="Studio preview" />
               </div>
             )}
           </section>
 
-          {/* Fase 5-6: sezioni, verify, approvazione, publish */}
+          {/* Phase 5-6: sections, verify, approval, publish */}
           {meta.sections.length > 0 && (
             <section className="mt-6 rounded-lg border border-gray-200 p-5">
-              <h2 className="text-sm font-semibold text-gray-900">Fase 5-6 — Approvazione &amp; pubblicazione</h2>
+              <h2 className="text-sm font-semibold text-gray-900">Phase 5-6 — Approval &amp; publishing</h2>
 
               <div className="mt-3 divide-y divide-gray-100">
                 {meta.sections.map((s) => {
@@ -420,12 +421,12 @@ export default function ReconstructionPage() {
                               state.aligned ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
                             }`}
                           >
-                            {state.aligned ? "allineato" : "modifiche non pubblicate"}
+                            {state.aligned ? "aligned" : "unpublished changes"}
                           </span>
                         )}
                         {!state?.published && (
                           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-500">
-                            non pubblicato
+                            unpublished
                           </span>
                         )}
 
@@ -434,7 +435,7 @@ export default function ReconstructionPage() {
                           onChange={(e) => setReferenceFrame(s.file, e.target.value)}
                           className="rounded border border-gray-200 px-2 py-1 text-xs"
                         >
-                          <option value="">frame di riferimento…</option>
+                          <option value="">reference frame…</option>
                           {meta.frames.map((f) => (
                             <option key={f.file} value={f.file}>
                               {f.file} ({(f.timestampMs / 1000).toFixed(1)}s)
@@ -474,7 +475,7 @@ export default function ReconstructionPage() {
                 className="mt-4 flex items-center gap-1.5 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
               >
                 {busyAction === "publish" && <Spinner />}
-                {busyAction === "publish" ? "Pubblico…" : "Pubblica"}
+                {busyAction === "publish" ? "Publishing…" : "Publish"}
               </button>
               {publishSummary && <p className="mt-2 text-sm text-gray-700">{publishSummary}</p>}
             </section>

@@ -4,9 +4,9 @@ import path from "node:path";
 import { prisma } from "@/lib/db";
 import { framesDir } from "@/lib/reconstruction/paths";
 
-// Serve un frame estratto (Fase 1b) — vive su disco sotto
-// reconstructions/<slug>/material/frames/, fuori da /public: la UI admin lo
-// legge da qui invece che come asset statico Next.
+// Serves an extracted frame (Phase 1b) — lives on disk under
+// reconstructions/<slug>/material/frames/, outside /public: the admin UI
+// reads it from here instead of as a static Next asset.
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; file: string }> }
@@ -15,9 +15,9 @@ export async function GET(
   const site = await prisma.site.findUniqueOrThrow({ where: { id } });
   const filename = decodeURIComponent(file);
 
-  // Difesa minima contro path traversal: solo nomi file semplici.
+  // Minimal defense against path traversal: only simple filenames.
   if (filename.includes("/") || filename.includes("..")) {
-    return NextResponse.json({ error: "Nome file non valido" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
   }
 
   try {
@@ -26,6 +26,6 @@ export async function GET(
       headers: { "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=3600" },
     });
   } catch {
-    return NextResponse.json({ error: "Frame non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "Frame not found" }, { status: 404 });
   }
 }

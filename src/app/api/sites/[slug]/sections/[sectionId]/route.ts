@@ -3,11 +3,11 @@ import { prisma } from "@/lib/db";
 import { ADMIN_COOKIE, verifySessionToken } from "@/lib/auth";
 import { getClerkUserId } from "@/lib/stripe";
 
-// Restituisce prompt/codice di una sezione pubblicata dallo studio di
-// ricostruzione. A differenza di .../components/[componentId] (estrazione
-// LAZY via LLM), qui prompt e generatedCode sono già stati generati al
-// momento della pubblicazione (src/lib/reconstruction/publish.ts): questa
-// route legge soltanto, applicando lo stesso gate sul codice a pagamento.
+// Returns prompt/code for a section published by the reconstruction
+// studio. Unlike .../components/[componentId] (LAZY extraction via LLM),
+// here prompt and generatedCode were already generated at publish time
+// (src/lib/reconstruction/publish.ts): this route only reads, applying
+// the same gate on the paid code.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string; sectionId: string }> }
@@ -16,13 +16,13 @@ export async function POST(
 
   const site = await prisma.site.findUnique({ where: { slug } });
   if (!site) {
-    return NextResponse.json({ error: "Sito non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
 
   if (site.visibility !== "published") {
     const isAdmin = await verifySessionToken(req.cookies.get(ADMIN_COOKIE)?.value);
     if (!isAdmin) {
-      return NextResponse.json({ error: "Sito non trovato" }, { status: 404 });
+      return NextResponse.json({ error: "Site not found" }, { status: 404 });
     }
   }
 
@@ -30,7 +30,7 @@ export async function POST(
     where: { id: sectionId, siteId: site.id, filePath: { not: null } },
   });
   if (!section) {
-    return NextResponse.json({ error: "Sezione non trovata" }, { status: 404 });
+    return NextResponse.json({ error: "Section not found" }, { status: 404 });
   }
 
   const body = await req.json().catch(() => ({}));
@@ -40,13 +40,13 @@ export async function POST(
     return NextResponse.json({ mode: "prompt", prompt: section.prompt ?? "" });
   }
 
-  // Il codice è a pagamento solo per i siti con un prezzo configurato,
-  // stesso gate di .../components/[componentId] (sblocco a vita via Unlock).
+  // The code is paid only for sites with a configured price, same gate
+  // as .../components/[componentId] (lifetime unlock via Unlock).
   if (site.price && site.price > 0) {
     const userId = await getClerkUserId();
     if (!userId) {
       return NextResponse.json(
-        { error: "Accedi per sbloccare il codice", requiresAuth: true, price: site.price },
+        { error: "Sign in to unlock the code", requiresAuth: true, price: site.price },
         { status: 401 }
       );
     }
@@ -55,7 +55,7 @@ export async function POST(
     });
     if (!unlock) {
       return NextResponse.json(
-        { error: "Sito non sbloccato", requiresCheckout: true, price: site.price },
+        { error: "Site not unlocked", requiresCheckout: true, price: site.price },
         { status: 402 }
       );
     }
