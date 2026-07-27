@@ -1,0 +1,77 @@
+{
+  "slug": "floema-clonr",
+  "siteId": "cms2bewqk0001j8hzzaegh5pl",
+  "sourceUrl": "https://github.com/itsgigi/floema_clone",
+  "phase": "analyzed",
+  "detectedLibs": [],
+  "palette": [
+    "rgb(31, 35, 40)",
+    "rgb(255, 255, 255)",
+    "rgb(0, 0, 0)",
+    "rgb(88, 99, 91)",
+    "rgb(89, 99, 110)",
+    "rgb(9, 105, 218)",
+    "rgb(37, 41, 46)",
+    "rgba(255, 255, 255, 0.75)"
+  ],
+  "fonts": [
+    "Mona Sans VF",
+    "Mona Sans",
+    "Mona Sans Mono",
+    "Noto Sans",
+    "MonaSansFallback",
+    "MonaSansHeaderFallback",
+    "Hubot Sans",
+    "Mona Sans Fallback",
+    "Mona Sans Header Fallback"
+  ],
+  "video": {
+    "human": null,
+    "scripted": "material/video/scripted.webm"
+  },
+  "frames": [
+    {
+      "file": "frame_001.jpg",
+      "timestampMs": 120
+    },
+    {
+      "file": "frame_002.jpg",
+      "timestampMs": 5120
+    },
+    {
+      "file": "frame_003.jpg",
+      "timestampMs": 5200
+    },
+    {
+      "file": "frame_004.jpg",
+      "timestampMs": 5400
+    },
+    {
+      "file": "frame_005.jpg",
+      "timestampMs": 5560
+    },
+    {
+      "file": "frame_006.jpg",
+      "timestampMs": 5760
+    },
+    {
+      "file": "frame_007.jpg",
+      "timestampMs": 5880
+    },
+    {
+      "file": "frame_008.jpg",
+      "timestampMs": 6120
+    },
+    {
+      "file": "frame_009.jpg",
+      "timestampMs": 6280
+    },
+    {
+      "file": "frame_010.jpg",
+      "timestampMs": 6400
+    }
+  ],
+  "sections": [],
+  "createdAt": "2026-07-27T07:42:14.707Z",
+  "updatedAt": "2026-07-27T08:04:38.558Z"
+}

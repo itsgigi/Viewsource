@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,7 +23,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
+  const markup = (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
@@ -30,4 +31,12 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
+
+  // Auth utenti pubblici (Clerk) separata dal cookie admin. Se le chiavi
+  // Clerk non sono configurate, l'app resta comunque buildabile e usabile
+  // (solo le funzionalità legate all'unlock/checkout non funzionano finché
+  // non vengono aggiunte NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY + CLERK_SECRET_KEY).
+  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) return markup;
+
+  return <ClerkProvider>{markup}</ClerkProvider>;
 }

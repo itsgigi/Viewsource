@@ -9,6 +9,7 @@ const createSchema = z.object({
   sourceType: z.enum(["url", "git"]),
   sourceUrl: z.string().url(),
   awwwardsUrl: z.string().url().optional(),
+  branch: z.string().trim().min(1).optional(), // solo sourceType "git": default al branch di default della repo
 });
 
 export async function POST(req: NextRequest) {

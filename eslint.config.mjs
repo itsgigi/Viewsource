@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Studio di ricostruzione assistita: file generati/editati a mano fuori
+    // dal progetto Next (mai importati dall'app, niente motivo per farli
+    // rispettare le regole lint dell'app — vedi tsconfig.json "exclude").
+    "reconstructions/**",
+    // Working copy delle repo clonate per l'ingestion "git" (src/lib/ingest/git.ts):
+    // codice di un progetto altrui, non del nostro — stessa ragione di reconstructions/.
+    "repos/**",
   ]),
 ]);
 

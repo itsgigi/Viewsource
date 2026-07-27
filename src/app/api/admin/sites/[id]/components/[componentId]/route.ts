@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 const patchSchema = z.object({
   cover: z.string().url().nullable().optional(),
   coverType: z.enum(["image", "video"]).nullable().optional(),
+  excluded: z.boolean().optional(), // nasconde/mostra il componente nella griglia pubblica (Fase 6)
 });
 
 // Aggiorna la cover (foto/video) di un componente dal pannello admin

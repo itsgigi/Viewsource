@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { qdrant, COLLECTION, ensureCollection } from "@/lib/qdrant";
 import { extractAnimationSignals } from "./animationSignals";
+import type { CapturedSection as CapturedSectionInfo } from "@/lib/ingest/capture";
 
 // ---------- Config ----------
 
@@ -54,7 +55,9 @@ const analysisSchema = z.object({
           ),
         sourcePath: z
           .string()
-          .describe("Path del file o URL della pagina da cui proviene"),
+          .describe(
+            "Path del file, URL della pagina, o — quando il componente corrisponde a una SEZIONE CATTURATA — il suo selettore esatto così com'è scritto dopo 'selettore=' nel blocco, per poter recuperare l'HTML/CSS reale in fase di estrazione"
+          ),
       })
     )
     .describe(
@@ -80,6 +83,14 @@ export async function analyzeSite(siteId: string) {
   let corpus = buildCorpus(docs);
   if (animationSignals) {
     corpus += `\n\n===== SEGNALI DI ANIMAZIONE (HTML renderizzato dell'homepage) =====\n${animationSignals}`;
+  }
+
+  const capturedSections = (site.capturedSections as CapturedSectionInfo[] | null) ?? [];
+  if (capturedSections.length > 0) {
+    corpus += `\n\n===== SEZIONI CATTURATE DAL DOM REALE (Playwright, HTML+CSS effettivi renderizzati) =====`;
+    for (const s of capturedSections.slice(0, 12)) {
+      corpus += `\n\n--- SEZIONE selettore="${s.selector}" ---\nHTML:\n${s.html.slice(0, 3_000)}\nCSS computato (elementi principali):\n${s.css.slice(0, 1_500)}`;
+    }
   }
 
   const awwwards = site.awwwards as {
@@ -129,7 +140,7 @@ ${awwwards.description ? `Descrizione: ${awwwards.description}` : ""}`;
     {
       role: "system",
       content:
-        "Sei un analista tecnico esperto di frontend. Analizza il contenuto di un sito web o repository e produci un'analisi strutturata, concreta e accurata. Basati solo su ciò che vedi nel corpus, non inventare. Se è presente uno screenshot dell'homepage, usalo come fonte primaria per palette colori e font reali (osservali direttamente nell'immagine); il testo markdown serve solo da contesto aggiuntivo.\n\nNel campo components devi elencare DUE famiglie di componenti, entrambe obbligatorie:\n1. Componenti strutturali (kind layout, section, ui): le sezioni e gli elementi riutilizzabili della pagina (hero, header, footer, card, selettori, slider...).\n2. Componenti animation: se sono fornite più immagini in sequenza, rappresentano lo scorrimento della pagina dall'alto verso il basso — usale per individuare effetti legati allo scroll (parallax, elementi sticky che si trasformano, progress/fill bar, reveal, overlay...). Tratta OGNI effetto scroll/motion distinto come un componente SEPARATO con kind \"animation\", nominato in modo specifico (es. 'Hero parallax intro', 'Barra di progresso allo scroll'), usando i SEGNALI DI ANIMAZIONE nel corpus come evidenza tecnica quando disponibili.\n\nUn'analisi che contiene solo animation o solo componenti strutturali è incompleta.\n\nSe il corpus contiene un blocco AWWWARDS, trattalo come fonte autorevole curata da esseri umani: i suoi tag tecnologici hanno priorità per techStack e la sua palette ha priorità per designInfo.palette.",
+        "Sei un analista tecnico esperto di frontend. Analizza il contenuto di un sito web o repository e produci un'analisi strutturata, concreta e accurata. Basati solo su ciò che vedi nel corpus, non inventare. Se è presente uno screenshot dell'homepage, usalo come fonte primaria per palette colori e font reali (osservali direttamente nell'immagine); il testo markdown serve solo da contesto aggiuntivo.\n\nSe il corpus contiene un blocco SEZIONI CATTURATE DAL DOM REALE, trattalo come fonte primaria per la struttura: è HTML e CSS computato realmente renderizzati dal browser (Playwright), non testo derivato. Fai corrispondere ogni componente strutturale (layout/section/ui) alla sezione catturata pertinente quando esiste, e usane il selettore come sourcePath.\n\nNel campo components devi elencare DUE famiglie di componenti, entrambe obbligatorie:\n1. Componenti strutturali (kind layout, section, ui): le sezioni e gli elementi riutilizzabili della pagina (hero, header, footer, card, selettori, slider...).\n2. Componenti animation: se sono fornite più immagini in sequenza, rappresentano lo scorrimento della pagina dall'alto verso il basso — usale per individuare effetti legati allo scroll (parallax, elementi sticky che si trasformano, progress/fill bar, reveal, overlay...). Tratta OGNI effetto scroll/motion distinto come un componente SEPARATO con kind \"animation\", nominato in modo specifico (es. 'Hero parallax intro', 'Barra di progresso allo scroll'), usando i SEGNALI DI ANIMAZIONE nel corpus come evidenza tecnica quando disponibili.\n\nUn'analisi che contiene solo animation o solo componenti strutturali è incompleta.\n\nSe il corpus contiene un blocco AWWWARDS, trattalo come fonte autorevole curata da esseri umani: i suoi tag tecnologici hanno priorità per techStack e la sua palette ha priorità per designInfo.palette.",
     },
     {
       role: "user",

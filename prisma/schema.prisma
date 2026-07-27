@@ -31,12 +31,69 @@ model Site {
   awwwardsUrl String? // URL della pagina Awwwards fornito manualmente dall'utente (override della discovery)
   awwwards    Json? // dati estratti dalla pagina Awwwards (award, scores, tags, credits, gallery...)
 
+  // Ingestion da repo GitHub (sourceType "git"): licenza rilevata (SPDX id o
+  // "all rights reserved") e branch opzionale scelto in fase di creazione.
+  // Altri metadati repo (descrizione, topics, homepage, framework) vivono in
+  // `metadata` (Json) sopra, non serve una colonna dedicata per ognuno.
+  license     String?
+  branch      String?
+  // URL del sito deployato: auto-rilevato da GitHub (metadata.homepage) se
+  // presente, sovrascrivibile dall'admin. Usato per il preview live
+  // (iframe in admin) e come fallback per lo screenshot di copertina
+  // quando il dev server locale non parte (vedi src/lib/ingest/repo.ts).
+  deployedUrl String?
+
+  // Cattura reale (Fase A, Playwright, solo locale/admin)
+  capturedAssets Json? // asset scoperti nella cattura: [{ url, type: "image"|"font"|"other" }]
+  capturedSections Json? // sezioni catturate: [{ selector, tag, html, css, screenshot }]
+  clonePreview   Json? // HTML+CSS anonimizzati per lo showcase (Fase D): { html, generatedAt }
+
+  // Cattura per-sezione (Section model): un solo screenshot full-page da cui
+  // ogni Section.boundsTop/boundsHeight ritaglia — condiviso da tutte le
+  // sezioni del sito, necessario per il re-crop dopo merge/split nel
+  // boundary editor HITL.
+  sectionsFullPageScreenshot String?
+
+  // Paywall (Fase C): sblocco a vita del codice per sito, one-time payment
+  price         Int? // prezzo di sblocco in centesimi (null = non in vendita)
+  stripePriceId String?
+  unlocks       Unlock[]
+
+  // Studio di ricostruzione assistita (Viewsource v2): mirror di
+  // /reconstructions/<slug>/meta.json.phase, solo per badge in dashboard
+  // senza dover leggere il disco per ogni riga della lista siti. Il disco
+  // resta l'unica fonte di verità: null | "collecting" | "analyzed" |
+  // "generated" | "refining" | "published".
+  reconstructionStatus String?
+
   documents   Document[]
   components  Component[]
   sources     Source[]
+  sections    Section[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Utente pubblico autenticato via Clerk (separato dall'admin, che usa cookie)
+model User {
+  id        String   @id // Clerk user id
+  email     String?
+  unlocks   Unlock[]
+  createdAt DateTime @default(now())
+}
+
+// Sblocco a vita del codice di un sito per un utente, dopo pagamento Stripe
+model Unlock {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  siteId          String
+  site            Site     @relation(fields: [siteId], references: [id])
+  stripePaymentId String
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, siteId])
 }
 
 // Fonte esterna da cui un sito è stato scoperto/arricchito
@@ -101,7 +158,105 @@ model Component {
   prompt      String? // prompt generato per ricreare il componente via LLM
   deps        Json? // dipendenze rilevate ["gsap", "framer-motion"]
 
+  // Estrazione AST da repo (origin "ast", sourceType "git" del Site) —
+  // vedi src/lib/ast/. Deterministica, nessun token LLM consumato.
+  filePath     String? // file principale, path relativo al repo
+  propsSchema  String? // JSON: interfaccia props estratta dall'AST
+  bundleFiles  String? // JSON: [{ path, content }] bundle multi-file completo
+  npmDeps      String? // JSON: string[] dipendenze npm richieste dal bundle
+  previewImage String? // URL Blob screenshot ritagliato dall'albero fiber React
+  rank         Int? // ordine di rilevanza assegnato dall'LLM (Fase 4), null = non ranked
+  excluded     Boolean @default(false) // nascosto dalla griglia pubblica senza eliminare la riga
+
   createdAt DateTime @default(now())
 
+  @@index([siteId])
+}
+
+// Sezione atomica e iterabile (Viewsource): ground truth catturata una volta,
+// mai modificata, contro cui ogni ricostruzione viene misurata (pixelmatch).
+model Section {
+  id     String @id @default(cuid())
+  siteId String
+  site   Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  order Int // posizione nella pagina
+  name  String // "Hero", "Features", "Footer"... (etichettata da un LLM economico)
+
+  // Ground truth del vecchio flusso auto (dismesso) — catturata una volta,
+  // MAI modificata. Nullable: le sezioni pubblicate dal nuovo flusso studio
+  // (vedi filePath sotto) non hanno una ground truth DOM catturata.
+  sourceHtml       String? // HTML reale della sezione
+  sourceCss        String? // CSS rilevante (computed styles serializzati)
+  sourceScreenshot String? // URL Blob dello screenshot originale della sezione
+
+  // Bounds nel Site.sectionsFullPageScreenshot condiviso (px, solo verticale:
+  // le sezioni occupano sempre tutta la larghezza viewport). Usati per
+  // ri-ritagliare lo screenshot dopo merge/split nel boundary editor HITL.
+  // Mutabili SOLO da merge/split/discard mentre status === "captured" — non
+  // sono "ground truth" nel senso stretto (quella è sourceHtml/Css), ma
+  // modificarli dopo che una sezione ha una generazione non ha senso.
+  boundsTop    Int?
+  boundsHeight Int?
+
+  // Inventario media reale (Fase Parte 2 spec) — URL reali, MAI sostituiti
+  // con placeholder prima della generazione: [{ kind: "video"|"image"|"bg-image"|"canvas", ... }]
+  mediaAssets Json?
+
+  // Filmstrip di scroll (Parte 3): frame catturati PRIMA del freeze-style,
+  // sul caricamento pristino, per osservare animazioni scroll-driven vive.
+  // Array ordinato di { url, scrollY } (scrollY necessario per allineare le
+  // coordinate frame-relative ai bounds pagina-assoluti della sezione).
+  filmstrip Json?
+
+  // Diff pixelmatch tra frame filmstrip consecutivi, filtrati per overlap
+  // verticale con questa sezione: [{ fromFrame, toFrame, bbox, changedRatio }]
+  motionHints Json?
+
+  // Librerie di animazione rilevate dagli script caricati dalla pagina
+  // (page-level, duplicato su ogni Section dello stesso sito per comodità
+  // di prompt): ["gsap", "ScrollTrigger", "framer-motion", ...]
+  detectedLibs Json?
+
+  // Descrizione testuale del comportamento scroll-driven, generata da un
+  // modello vision sulla filmstrip (Parte 4) — mostrata e corretta
+  // dall'admin (Parte 5c), MAI richiesta di scriverla da zero.
+  motionDescription String?
+
+  // Annotazione strutturata HITL (Parte 5b), a selezione, non testo libero
+  // obbligatorio: { mediaType, animations: string[], difficulty, notes? }
+  annotations Json?
+
+  // Ultima ricostruzione. Per le sezioni del nuovo flusso studio (vedi
+  // filePath sotto), generatedCode è il contenuto del file al momento della
+  // pubblicazione (non generato dall'AI a runtime) e renderScreenshot è lo
+  // screenshot prodotto dal rig Playwright+Vite dello studio.
+  generatedCode    String? // componente React+TS+Tailwind
+  renderScreenshot String? // URL Blob screenshot del componente ricostruito
+  diffScore        Float? // 0 = identico, 1 = totalmente diverso (pixelmatch) — solo se l'admin ha lanciato Verify
+
+  status String @default("captured") // captured | pending | generated | approved | rejected | published
+
+  // Storico tentativi: JSON array di { code, diffScore, feedback, renderScreenshot, createdAt }
+  iterations String?
+
+  // --- Studio di ricostruzione assistita (Viewsource v2) ---
+  // I file sotto /reconstructions/<slug>/ sono l'unica fonte di verità;
+  // questa riga è una PROIEZIONE popolata/aggiornata da `publish`, mai
+  // modificata direttamente. Chiave logica per l'upsert: (siteId, filePath).
+  filePath    String? // es. "reconstructions/acme/sections/01-Hero.tsx"
+  contentHash String? // sha256 del contenuto pubblicato — rileva modifiche non pubblicate
+  publishedAt DateTime?
+  prompt      String? // prompt LLM gratuito con snippet parziali, rigenerato al re-publish solo se contentHash cambia
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // NOTA: in DB questo è un CONSTRAINT UNIQUE DEFERRABLE INITIALLY DEFERRED
+  // (migration 20260723144755_make_section_order_deferrable), non un plain
+  // index — necessario perché il boundary editor HITL ri-numera più righe
+  // nella stessa transazione. Prisma non modella "deferrable": non lasciare
+  // che un futuro `prisma migrate dev` lo silenziosamente reverta a index.
+  @@unique([siteId, order])
   @@index([siteId])
 }

@@ -41,3 +41,11 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# working copy persistente delle repo clonate per l'ingestion "git" (src/lib/ingest/git.ts)
+/repos
+
+# studio di ricostruzione assistita: video sorgente (grezzi, grandi) esclusi;
+# frame estratti, static-extraction.json, SPEC.md, meta.json e il codice
+# generato restano committati (sono l'archivio delle ricostruzioni)
+reconstructions/**/material/video/

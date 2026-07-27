@@ -2,6 +2,12 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
+
+// Auth utenti pubblici (Clerk), separata dal cookie admin. Se le chiavi non
+// sono configurate l'app resta usabile: i componenti Clerk (useUser,
+// SignInButton...) non vengono mai montati, quindi non serve <ClerkProvider>.
+const CLERK_ENABLED = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 interface Component {
   id: string;
@@ -14,6 +20,37 @@ interface Component {
   code: string | null;
   prompt: string | null;
   deps: string[] | null;
+  // Solo componenti origin "ast" (ingestion da repo, sourceType "git")
+  previewImage?: string | null;
+}
+
+// Sezione pubblicata dallo studio di ricostruzione assistita
+// (src/lib/reconstruction/publish.ts) — l'unità mostrata pubblicamente,
+// sostituisce i Component come vetrina primaria del sito (vedi piano
+// Viewsource v2). Mappata in GalleryItem qui sotto per riusare
+// ExtractModal/CopyPromptButton (pensati per Component) senza duplicarli.
+interface SiteSection {
+  id: string;
+  order: number;
+  name: string;
+  renderScreenshot: string | null;
+  generatedCode: string | null;
+  prompt: string | null;
+}
+
+function sectionToGalleryItem(s: SiteSection): Component {
+  return {
+    id: s.id,
+    name: s.name,
+    kind: "section",
+    description: `Sezione #${s.order + 1}`,
+    cover: s.renderScreenshot,
+    coverType: "image",
+    sourcePath: null,
+    code: s.generatedCode,
+    prompt: s.prompt,
+    deps: null,
+  };
 }
 
 interface Doc {
@@ -30,12 +67,16 @@ interface SiteDetail {
   sourceType: "url" | "git";
   sourceUrl: string;
   description: string | null;
+  deployedUrl: string | null;
   techStack: string[] | null;
   designInfo: { palette?: string[]; fonts?: string[]; notes?: string } | null;
   screenshot: string | null;
   awwwards: AwwwardsInfo | null;
   components: Component[];
+  sections: SiteSection[];
   documents: Doc[];
+  price: number | null; // centesimi; null = codice sempre gratis
+  unlocked: boolean;
 }
 
 interface AwwwardsInfo {
@@ -65,6 +106,8 @@ interface Extraction {
   deps?: string[];
   prompt?: string;
   notes?: string;
+  // Bundle multi-file completo — solo componenti origin "ast" (repo), mode "code"
+  files?: { path: string; content: string }[];
 }
 
 const KIND_BADGE: Record<Component["kind"], string> = {
@@ -124,6 +167,15 @@ function FileIcon() {
   );
 }
 
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3.5 w-3.5">
+      <rect x="5" y="11" width="14" height="9" rx="1.5" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
+
 function ArrowUpIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
@@ -135,7 +187,7 @@ function ArrowUpIcon() {
 function ComponentThumbnail({ kind }: { kind: Component["kind"] }) {
   return (
     <div
-      className={`flex h-28 items-center justify-center gap-2 rounded-t-xl bg-linear-to-br p-4 ${KIND_GRADIENT[kind]}`}
+      className={`flex h-56 items-center justify-center gap-2 rounded-t-xl bg-linear-to-br p-4 ${KIND_GRADIENT[kind]}`}
     >
       {kind === "section" && (
         <div className="flex w-full flex-col gap-1.5">
@@ -172,7 +224,7 @@ function ComponentCover({ component }: { component: Component }) {
     return (
       <video
         src={component.cover}
-        className="h-28 w-full rounded-t-xl object-cover object-top"
+        className="h-56 w-full rounded-t-xl object-cover object-top"
         autoPlay
         muted
         loop
@@ -185,9 +237,14 @@ function ComponentCover({ component }: { component: Component }) {
     <img
       src={component.cover}
       alt={`${component.name} cover`}
-      className="h-28 w-full rounded-t-xl object-cover object-top"
+      className="h-56 w-full rounded-t-xl object-cover object-top"
     />
   );
+}
+
+function lastPathSegment(path: string): string {
+  const parts = path.split("/").filter(Boolean);
+  return parts[parts.length - 1] ?? path;
 }
 
 function renderWithInlineCode(text: string) {
@@ -210,10 +267,11 @@ export default function SitePage({
   const { slug } = use(params);
   const [site, setSite] = useState<SiteDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [tab, setTab] = useState<"components" | "documents" | "chat">(
-    "components"
-  );
+  const [tab, setTab] = useState<"gallery" | "documents" | "chat">("gallery");
   const [extracting, setExtracting] = useState<Component | null>(null);
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { isSignedIn } = CLERK_ENABLED ? useUser() : { isSignedIn: false };
 
   useEffect(() => {
     fetch(`/api/sites/${slug}`)
@@ -241,18 +299,51 @@ export default function SitePage({
   const designInfo = site.designInfo;
   const awwwards = site.awwwards;
 
+  // Le due modalità di ingestion condividono questa pagina: "git" mostra i
+  // Component reali (origin "ast", preview via albero fiber React), "url"
+  // mostra le Section pubblicate dallo studio di ricostruzione. Stessa
+  // griglia/modale, sorgente dati ed endpoint di estrazione diversi.
+  const isRepo = site.sourceType === "git";
+  const galleryItems: Component[] = isRepo
+    ? site.components.map((c) => ({
+        ...c,
+        cover: c.previewImage ?? c.cover,
+        coverType: c.previewImage ? "image" : c.coverType,
+      }))
+    : site.sections.map(sectionToGalleryItem);
+  const galleryLabel = isRepo ? "Components" : "Sections";
+  const galleryEndpoint = (componentId: string) =>
+    isRepo
+      ? `/api/sites/${site.slug}/components/${componentId}`
+      : `/api/sites/${site.slug}/sections/${componentId}`;
+
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-8">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-sm">
-        <Link href="/" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-900">
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-zinc-900 text-[10px] font-bold text-white">
-            si
-          </span>
-          Site Ingest
-        </Link>
-        <span className="text-zinc-300">/</span>
-        <span className="text-zinc-900">{site.name}</span>
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <div className="flex items-center gap-1.5">
+          <Link href="/" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-900">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-zinc-900 text-[10px] font-bold text-white">
+              si
+            </span>
+            Site Ingest
+          </Link>
+          <span className="text-zinc-300">/</span>
+          <span className="text-zinc-900">{site.name}</span>
+        </div>
+        {CLERK_ENABLED && (
+          <div className="flex items-center gap-2">
+            {isSignedIn ? (
+              <UserButton />
+            ) : (
+              <SignInButton mode="modal">
+                <button className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-400">
+                  Accedi
+                </button>
+              </SignInButton>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Header */}
@@ -270,6 +361,27 @@ export default function SitePage({
           </a>
         </div>
       </div>
+
+      {/* Preview live del sito deployato */}
+      {site.deployedUrl && (
+        <section className="mt-8 overflow-hidden rounded-xl border border-zinc-200 bg-white">
+          <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-3">
+            <h2 className="text-xs font-medium uppercase tracking-widest text-zinc-400">
+              Live preview
+            </h2>
+            <a
+              href={site.deployedUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-900"
+            >
+              {site.deployedUrl}
+              <ExternalLinkIcon />
+            </a>
+          </div>
+          <iframe src={site.deployedUrl} className="h-140 w-full" title={`${site.name} live preview`} />
+        </section>
+      )}
 
       {/* AI Analysis */}
       {site.description && (
@@ -445,7 +557,7 @@ export default function SitePage({
       <div className="mt-8 flex gap-1 border-b border-zinc-200">
         {(
           [
-            ["components", "Components", site.components.length],
+            ["gallery", galleryLabel, galleryItems.length],
             ["documents", "Documents", site.documents.length],
             ["chat", "AI Chat", null],
           ] as const
@@ -469,15 +581,15 @@ export default function SitePage({
         ))}
       </div>
 
-      {/* Components */}
-      {tab === "components" && (
+      {/* Gallery: Components (repo) o Sections (ricostruzione) */}
+      {tab === "gallery" && (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          {site.components.length === 0 && (
+          {galleryItems.length === 0 && (
             <p className="text-sm text-zinc-400">
-              No components identified yet.
+              {isRepo ? "No components published yet." : "No sections published yet."}
             </p>
           )}
-          {site.components.map((c) => (
+          {galleryItems.map((c) => (
             <div
               key={c.id}
               className="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white"
@@ -495,23 +607,19 @@ export default function SitePage({
                 <p className="mt-1.5 flex-1 text-xs leading-relaxed text-zinc-500">
                   {c.description}
                 </p>
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  {c.sourcePath ? (
-                    <p className="truncate font-mono text-[11px] text-zinc-400">
-                      {c.sourcePath}
-                    </p>
-                  ) : (
-                    <span />
-                  )}
+                {c.sourcePath && (
+                  <p className="mt-2 truncate font-mono text-[11px] text-zinc-400">
+                    {c.sourcePath}
+                  </p>
+                )}
+                <div className="mt-3 flex items-center gap-2">
+                  <CopyPromptButton endpoint={galleryEndpoint(c.id)} component={c} />
                   <button
                     onClick={() => setExtracting(c)}
-                    className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                      c.code || c.prompt
-                        ? "border border-zinc-200 text-zinc-700 hover:border-zinc-400"
-                        : "bg-zinc-900 text-white hover:bg-zinc-700"
-                    }`}
+                    className="flex shrink-0 items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-zinc-700"
                   >
-                    {c.code || c.prompt ? "View extraction" : "Extract"}
+                    {site.price && !site.unlocked && !c.code && <LockIcon />}
+                    {c.code ? "View code" : "Get code"}
                   </button>
                 </div>
               </div>
@@ -544,19 +652,30 @@ export default function SitePage({
       {extracting && (
         <ExtractModal
           slug={site.slug}
+          endpoint={galleryEndpoint(extracting.id)}
           component={extracting}
+          price={site.price}
+          unlocked={site.unlocked}
           onClose={() => setExtracting(null)}
           onSaved={(patch) =>
-            setSite((s) =>
-              s
+            setSite((s) => {
+              if (!s) return s;
+              return isRepo
                 ? {
                     ...s,
                     components: s.components.map((c) =>
                       c.id === extracting.id ? { ...c, ...patch } : c
                     ),
                   }
-                : s
-            )
+                : {
+                    ...s,
+                    sections: s.sections.map((sec) =>
+                      sec.id === extracting.id
+                        ? { ...sec, prompt: patch.prompt ?? sec.prompt, generatedCode: patch.code ?? sec.generatedCode }
+                        : sec
+                    ),
+                  };
+            })
           }
         />
       )}
@@ -564,16 +683,68 @@ export default function SitePage({
   );
 }
 
-// ---------- Extraction modal ----------
+// ---------- Copia prompt: azione rapida, sempre gratis, niente modale ----------
+
+function CopyPromptButton({ endpoint, component }: { endpoint: string; component: Component }) {
+  const [state, setState] = useState<"idle" | "loading" | "copied" | "error">("idle");
+
+  async function copyPrompt() {
+    setState("loading");
+    try {
+      let prompt = component.prompt;
+      if (!prompt) {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "prompt" }),
+        });
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const data: Extraction = await res.json();
+        prompt = data.prompt ?? "";
+      }
+      await navigator.clipboard.writeText(prompt);
+      setState("copied");
+      setTimeout(() => setState("idle"), 1500);
+    } catch {
+      setState("error");
+      setTimeout(() => setState("idle"), 1500);
+    }
+  }
+
+  return (
+    <button
+      onClick={copyPrompt}
+      disabled={state === "loading"}
+      className="flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-400 disabled:opacity-50"
+    >
+      <CopyIcon />
+      {state === "loading"
+        ? "Generating…"
+        : state === "copied"
+        ? "Copied"
+        : state === "error"
+        ? "Failed"
+        : "Copy prompt"}
+    </button>
+  );
+}
+
+// ---------- Extraction modal (codice, gated su Unlock se il sito ha un prezzo) ----------
 
 function ExtractModal({
   slug,
+  endpoint,
   component,
+  price,
+  unlocked,
   onClose,
   onSaved,
 }: {
   slug: string;
+  endpoint: string;
   component: Component;
+  price: number | null;
+  unlocked: boolean;
   onClose: () => void;
   onSaved: (patch: Partial<Component>) => void;
 }) {
@@ -581,6 +752,31 @@ function ExtractModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  // CLERK_ENABLED è una costante di modulo (da env, fissa per tutta la
+  // sessione): condizionare la hook su di essa non rompe le rules-of-hooks,
+  // l'ordine delle chiamate resta identico ad ogni render di questa istanza.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { isSignedIn } = CLERK_ENABLED ? useUser() : { isSignedIn: false };
+
+  async function unlock() {
+    setCheckoutLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/sites/${slug}/checkout`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        setError(data.error ?? `Errore ${res.status}`);
+        setCheckoutLoading(false);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore checkout");
+      setCheckoutLoading(false);
+    }
+  }
 
   const [results, setResults] = useState<Partial<Record<ExtractMode, Extraction>>>(
     () => {
@@ -601,13 +797,24 @@ function ExtractModal({
   );
 
   const result = results[mode] ?? null;
-  const copyText = mode === "code" ? result?.code : result?.prompt;
+  const codeLocked = mode === "code" && !!price && !unlocked;
+
+  // Bundle multi-file (componenti origin "ast"): l'utente sceglie quale file
+  // vedere/copiare, il file principale è selezionato di default.
+  const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
+  const bundleFiles = mode === "code" ? result?.files ?? [] : [];
+  const activeFile =
+    bundleFiles.length > 0 ? bundleFiles.find((f) => f.path === activeFilePath) ?? bundleFiles[0] : null;
+
+  const copyText = mode === "code" ? activeFile?.content ?? result?.code : result?.prompt;
+  const displayFilename =
+    mode === "code" ? (activeFile ? lastPathSegment(activeFile.path) : result?.filename) : "prompt.md";
 
   async function extract() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/sites/${slug}/components/${component.id}`, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode }),
@@ -686,7 +893,7 @@ function ExtractModal({
               </div>
             </div>
 
-            {!result && (
+            {!result && !codeLocked && (
               <button
                 onClick={extract}
                 disabled={loading}
@@ -699,10 +906,32 @@ function ExtractModal({
                   : "Generate prompt"}
               </button>
             )}
+
+            {codeLocked &&
+              (CLERK_ENABLED && !isSignedIn ? (
+                <SignInButton mode="modal">
+                  <button className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700">
+                    <LockIcon /> Accedi per sbloccare
+                  </button>
+                </SignInButton>
+              ) : (
+                <button
+                  onClick={unlock}
+                  disabled={checkoutLoading}
+                  className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:opacity-50"
+                >
+                  <LockIcon />
+                  {checkoutLoading
+                    ? "Redirecting…"
+                    : `Sblocca il codice di questo sito — €${((price ?? 0) / 100).toFixed(2)}`}
+                </button>
+              ))}
           </div>
 
           <p className="mt-3 text-xs text-zinc-500">
-            {mode === "code"
+            {codeLocked
+              ? "Il codice di questo componente fa parte del pacchetto a pagamento del sito: sblocco a vita, valido per TUTTI i componenti di questo sito."
+              : mode === "code"
               ? "Codice React + TypeScript + Tailwind CSS pronto da incollare nel tuo progetto."
               : "Prompt per Claude Code, Cursor o un altro LLM: ricrea il componente adattato alle convenzioni del progetto ospite."}
           </p>
@@ -718,11 +947,26 @@ function ExtractModal({
           {/* Result */}
           {result && !loading && (
             <div className="mt-5">
+              {bundleFiles.length > 1 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {bundleFiles.map((f) => (
+                    <button
+                      key={f.path}
+                      onClick={() => setActiveFilePath(f.path)}
+                      className={`rounded-lg border px-2.5 py-1 font-mono text-[11px] transition ${
+                        (activeFile?.path ?? bundleFiles[0].path) === f.path
+                          ? "border-zinc-900 bg-zinc-900 text-white"
+                          : "border-zinc-200 text-zinc-500 hover:border-zinc-400"
+                      }`}
+                    >
+                      {lastPathSegment(f.path)}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
                 <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-2">
-                  <span className="font-mono text-xs text-zinc-400">
-                    {mode === "code" ? result.filename : "prompt.md"}
-                  </span>
+                  <span className="font-mono text-xs text-zinc-400">{displayFilename}</span>
                   <button
                     onClick={copy}
                     className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-2.5 py-1 text-xs text-zinc-300 hover:border-zinc-500"

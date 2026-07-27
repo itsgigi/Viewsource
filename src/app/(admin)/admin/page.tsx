@@ -16,6 +16,7 @@ interface AdminSite {
   createdAt: string;
   screenshot: string | null;
   cover: string | null;
+  price: number | null; // centesimi; null = codice gratis (nessun paywall)
   chatIntents: number;
   _count: { documents: number; components: number };
 }
@@ -125,6 +126,7 @@ export default function AdminPage() {
   const [sourceType, setSourceType] = useState<"url" | "git">("url");
   const [sourceUrl, setSourceUrl] = useState("");
   const [awwwardsUrl, setAwwwardsUrl] = useState("");
+  const [branch, setBranch] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -200,6 +202,7 @@ export default function AdminPage() {
           sourceType,
           sourceUrl,
           ...(awwwardsUrl.trim() ? { awwwardsUrl: awwwardsUrl.trim() } : {}),
+          ...(sourceType === "git" && branch.trim() ? { branch: branch.trim() } : {}),
         }),
       });
 
@@ -212,6 +215,7 @@ export default function AdminPage() {
       setName("");
       setSourceUrl("");
       setAwwwardsUrl("");
+      setBranch("");
       await load();
     } finally {
       setSubmitting(false);
@@ -235,6 +239,17 @@ export default function AdminPage() {
       body: JSON.stringify({ visibility }),
     });
     await load();
+  }
+
+  async function setPrice(site: AdminSite, eurosInput: string) {
+    const euros = parseFloat(eurosInput.replace(",", "."));
+    const price = Number.isFinite(euros) && euros > 0 ? Math.round(euros * 100) : null;
+    setSites((all) => all.map((s) => (s.id === site.id ? { ...s, price } : s)));
+    await fetch(`/api/admin/sites/${site.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ price }),
+    });
   }
 
   async function logout() {
@@ -356,6 +371,20 @@ export default function AdminPage() {
           </div>
         )}
 
+        {sourceType === "git" && (
+          <div className="mt-3 flex items-center gap-2">
+            <label className="shrink-0 text-xs text-zinc-400">
+              Branch <span className="text-zinc-300">(optional — defaults to the repo&apos;s default branch)</span>
+            </label>
+            <input
+              value={branch}
+              onChange={(e) => setBranch(e.target.value)}
+              placeholder="main"
+              className="w-full max-w-40 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs text-zinc-900 outline-none placeholder:text-zinc-300 focus:border-zinc-400"
+            />
+          </div>
+        )}
+
         {formError && <p className="mt-3 text-sm text-red-600">{formError}</p>}
       </div>
 
@@ -451,7 +480,28 @@ export default function AdminPage() {
                     >
                       {s.visibility === "published" ? "Published" : "Draft — publish"}
                     </button>
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex flex-wrap items-center justify-end gap-2.5">
+                      <label
+                        className="flex items-center gap-1 text-xs text-zinc-400"
+                        title="Prezzo di sblocco codice (vuoto = gratis)"
+                      >
+                        €
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          defaultValue={s.price ? (s.price / 100).toString() : ""}
+                          placeholder="free"
+                          onBlur={(e) => setPrice(s, e.target.value)}
+                          className="w-14 rounded border border-zinc-200 px-1.5 py-0.5 text-xs text-zinc-700 outline-none focus:border-zinc-400"
+                        />
+                      </label>
+                      <Link
+                        href={`/admin/sites/${s.id}`}
+                        className="flex items-center gap-1 whitespace-nowrap text-xs text-zinc-400 transition hover:text-zinc-900"
+                        title="Sezioni: cattura, ricostruzione, QA"
+                      >
+                        Sections →
+                      </Link>
                       <button
                         onClick={() => setMediaSite(s)}
                         className="flex items-center gap-1 text-xs text-zinc-400 transition hover:text-zinc-900"

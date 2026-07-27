@@ -1,0 +1,204 @@
+{
+  "slug": "cat-wiki-test",
+  "siteId": "cmrxs24b60000mrfrhd1dqng7",
+  "sourceUrl": "https://en.wikipedia.org/wiki/Cat",
+  "phase": "collecting",
+  "detectedLibs": [],
+  "palette": [
+    "rgb(51, 102, 204)",
+    "rgb(32, 33, 34)",
+    "rgb(64, 66, 68)",
+    "rgb(0, 0, 0)",
+    "rgb(255, 255, 255)",
+    "rgb(234, 236, 240)",
+    "rgb(16, 20, 24)",
+    "rgb(248, 249, 250)"
+  ],
+  "fonts": [
+    "sans-serif",
+    "Arial",
+    "Linux Libertine",
+    "monospace"
+  ],
+  "video": {
+    "human": null,
+    "scripted": "material/video/scripted.webm"
+  },
+  "frames": [
+    {
+      "file": "frame_001.jpg",
+      "timestampMs": 1840
+    },
+    {
+      "file": "frame_002.jpg",
+      "timestampMs": 2000
+    },
+    {
+      "file": "frame_003.jpg",
+      "timestampMs": 3520
+    },
+    {
+      "file": "frame_004.jpg",
+      "timestampMs": 4520
+    },
+    {
+      "file": "frame_005.jpg",
+      "timestampMs": 4680
+    },
+    {
+      "file": "frame_006.jpg",
+      "timestampMs": 4840
+    },
+    {
+      "file": "frame_007.jpg",
+      "timestampMs": 5040
+    },
+    {
+      "file": "frame_008.jpg",
+      "timestampMs": 5200
+    },
+    {
+      "file": "frame_009.jpg",
+      "timestampMs": 5360
+    },
+    {
+      "file": "frame_010.jpg",
+      "timestampMs": 5880
+    },
+    {
+      "file": "frame_011.jpg",
+      "timestampMs": 6040
+    },
+    {
+      "file": "frame_012.jpg",
+      "timestampMs": 6200
+    },
+    {
+      "file": "frame_013.jpg",
+      "timestampMs": 6400
+    },
+    {
+      "file": "frame_014.jpg",
+      "timestampMs": 6560
+    },
+    {
+      "file": "frame_015.jpg",
+      "timestampMs": 6720
+    },
+    {
+      "file": "frame_016.jpg",
+      "timestampMs": 6880
+    },
+    {
+      "file": "frame_017.jpg",
+      "timestampMs": 7080
+    },
+    {
+      "file": "frame_018.jpg",
+      "timestampMs": 7240
+    },
+    {
+      "file": "frame_019.jpg",
+      "timestampMs": 7400
+    },
+    {
+      "file": "frame_020.jpg",
+      "timestampMs": 7560
+    },
+    {
+      "file": "frame_021.jpg",
+      "timestampMs": 7720
+    },
+    {
+      "file": "frame_022.jpg",
+      "timestampMs": 7920
+    },
+    {
+      "file": "frame_023.jpg",
+      "timestampMs": 8080
+    },
+    {
+      "file": "frame_024.jpg",
+      "timestampMs": 8240
+    },
+    {
+      "file": "frame_025.jpg",
+      "timestampMs": 8400
+    },
+    {
+      "file": "frame_026.jpg",
+      "timestampMs": 8600
+    },
+    {
+      "file": "frame_027.jpg",
+      "timestampMs": 8760
+    },
+    {
+      "file": "frame_028.jpg",
+      "timestampMs": 8920
+    },
+    {
+      "file": "frame_029.jpg",
+      "timestampMs": 9080
+    },
+    {
+      "file": "frame_030.jpg",
+      "timestampMs": 9240
+    },
+    {
+      "file": "frame_031.jpg",
+      "timestampMs": 9920
+    },
+    {
+      "file": "frame_032.jpg",
+      "timestampMs": 10080
+    },
+    {
+      "file": "frame_033.jpg",
+      "timestampMs": 10280
+    },
+    {
+      "file": "frame_034.jpg",
+      "timestampMs": 10440
+    },
+    {
+      "file": "frame_035.jpg",
+      "timestampMs": 10600
+    },
+    {
+      "file": "frame_036.jpg",
+      "timestampMs": 10760
+    },
+    {
+      "file": "frame_037.jpg",
+      "timestampMs": 10960
+    },
+    {
+      "file": "frame_038.jpg",
+      "timestampMs": 11120
+    },
+    {
+      "file": "frame_039.jpg",
+      "timestampMs": 11480
+    },
+    {
+      "file": "frame_040.jpg",
+      "timestampMs": 11640
+    },
+    {
+      "file": "frame_041.jpg",
+      "timestampMs": 11800
+    },
+    {
+      "file": "frame_042.jpg",
+      "timestampMs": 11960
+    },
+    {
+      "file": "frame_043.jpg",
+      "timestampMs": 12160
+    }
+  ],
+  "sections": [],
+  "createdAt": "2026-07-23T17:20:58.230Z",
+  "updatedAt": "2026-07-23T17:29:21.019Z"
+}
