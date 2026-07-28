@@ -83,7 +83,7 @@ AUTH_SECRET=            # session signing
 BLOB_STORE_ID=          # for assets
 BLOB_READ_WRITE_TOKEN=  #
 
-# Clerk / Stripe keys as needed
+# Clerk key as needed
 ```
 
 ## Status & roadmap
@@ -95,4 +95,4 @@ Viewsource is under active development.
 
 ## About
 
-Built by **[Luigi Di Loreto](https://www.luigidiloreto.it)** — frontend engineer focused on the craft of the public web.
+Built by **[Luigi Di Loreto](https://www.luigidiloreto.it)** — software engineer working for the greatness of free web.
