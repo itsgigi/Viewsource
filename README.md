@@ -17,6 +17,8 @@ Two ingestion paths feed the same public gallery:
 - **From a GitHub repository** — the codebase is parsed at the AST level to identify exported React components, their typed props, and their internal dependency graph. Each component is rendered from the project's own dev server and captured as a real screenshot. Fidelity is 100% by construction: the code already exists, nothing is guessed.
 - **From a live website** — a human-in-the-loop reconstruction flow (video capture → AI structural analysis → assisted rebuild) recreates a site's sections as faithful, parametrized components.
 
+<img width="1029" height="655" alt="Screenshot 2026-07-28 alle 22 03 20" src="https://github.com/user-attachments/assets/85bda5e6-bcd4-47a4-a2dc-2c8abe67a4fb" />
+
 ## Why it's interesting (the engineering)
 
 This project is less about "another gallery" and more about a set of non-trivial problems solved pragmatically:
