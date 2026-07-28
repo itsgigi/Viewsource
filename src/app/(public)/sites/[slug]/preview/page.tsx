@@ -40,7 +40,7 @@ export default async function PreviewPage({
   if (!preview || error) {
     return (
       <main className="mx-auto max-w-2xl px-6 py-16 text-center">
-        <p className="text-zinc-500">
+        <p className="text-zinc-400">
           Preview not available{error ? `: ${error}` : "."}
         </p>
       </main>
@@ -49,7 +49,7 @@ export default async function PreviewPage({
 
   return (
     <div className="flex h-dvh flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 bg-white px-4 py-2 text-xs text-zinc-500">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 bg-zinc-900 px-4 py-2 text-xs text-zinc-400">
         <span>
           Demonstrative, anonymized clone of <strong>{site.name}</strong> — structure and style
           automatically recreated, brand/logos removed. Best-effort mitigation, not a legally
@@ -59,7 +59,7 @@ export default async function PreviewPage({
           href={site.sourceUrl}
           target="_blank"
           rel="noreferrer"
-          className="shrink-0 underline underline-offset-2 hover:text-zinc-900"
+          className="shrink-0 underline underline-offset-2 hover:text-white"
         >
           View original site ↗
         </a>
@@ -68,7 +68,7 @@ export default async function PreviewPage({
         title={`Clone preview of ${site.name}`}
         srcDoc={preview.html}
         sandbox="allow-same-origin"
-        className="w-full flex-1 border-0 bg-white"
+        className="w-full flex-1 border-0 bg-zinc-900"
       />
     </div>
   );

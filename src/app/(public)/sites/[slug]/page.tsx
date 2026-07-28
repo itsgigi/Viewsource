@@ -111,17 +111,17 @@ interface Extraction {
 }
 
 const KIND_BADGE: Record<Component["kind"], string> = {
-  layout: "bg-blue-50 text-blue-700",
-  section: "bg-violet-50 text-violet-700",
-  ui: "bg-emerald-50 text-emerald-700",
-  animation: "bg-orange-50 text-orange-700",
+  layout: "bg-blue-500/15 text-blue-300",
+  section: "bg-violet-500/15 text-violet-300",
+  ui: "bg-emerald-500/15 text-emerald-300",
+  animation: "bg-orange-500/15 text-orange-300",
 };
 
 const KIND_GRADIENT: Record<Component["kind"], string> = {
-  layout: "from-slate-100 to-blue-50",
-  section: "from-indigo-50 to-amber-50",
-  ui: "from-emerald-50 to-teal-50",
-  animation: "from-orange-50 to-amber-50",
+  layout: "from-slate-900 to-blue-950",
+  section: "from-indigo-950 to-amber-950",
+  ui: "from-emerald-950 to-teal-950",
+  animation: "from-orange-950 to-amber-950",
 };
 
 function ExternalLinkIcon() {
@@ -191,9 +191,9 @@ function ComponentThumbnail({ kind }: { kind: Component["kind"] }) {
     >
       {kind === "section" && (
         <div className="flex w-full flex-col gap-1.5">
-          <div className="h-2 w-2/3 rounded bg-zinc-900/10" />
-          <div className="h-2 w-1/2 rounded bg-zinc-900/10" />
-          <div className="mt-1 h-2.5 w-24 rounded bg-zinc-900" />
+          <div className="h-2 w-2/3 rounded bg-white/10" />
+          <div className="h-2 w-1/2 rounded bg-white/10" />
+          <div className="mt-1 h-2.5 w-24 rounded bg-white" />
         </div>
       )}
       {kind === "layout" && (
@@ -208,7 +208,7 @@ function ComponentThumbnail({ kind }: { kind: Component["kind"] }) {
           {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className={`h-6 w-14 rounded-full ${i === 1 ? "bg-zinc-900/80" : "bg-white/60"}`}
+              className={`h-6 w-14 rounded-full ${i === 1 ? "bg-white/80" : "bg-white/30"}`}
             />
           ))}
         </div>
@@ -250,7 +250,7 @@ function lastPathSegment(path: string): string {
 function renderWithInlineCode(text: string) {
   return text.split(/(`[^`]+`)/g).map((part, i) =>
     part.startsWith("`") && part.endsWith("`") ? (
-      <code key={i} className="rounded bg-zinc-100 px-1 py-0.5 font-mono text-[11px] text-zinc-700">
+      <code key={i} className="rounded bg-zinc-800 px-1 py-0.5 font-mono text-[11px] text-zinc-300">
         {part.slice(1, -1)}
       </code>
     ) : (
@@ -283,8 +283,8 @@ export default function SitePage({
   if (notFound) {
     return (
       <main className="mx-auto max-w-4xl px-6 py-12">
-        <p className="text-zinc-500">Site not found.</p>
-        <Link href="/" className="mt-4 inline-block text-sm text-zinc-700 underline">
+        <p className="text-zinc-400">Site not found.</p>
+        <Link href="/" className="mt-4 inline-block text-sm text-zinc-300 underline">
           ← Back to gallery
         </Link>
       </main>
@@ -292,7 +292,18 @@ export default function SitePage({
   }
 
   if (!site) {
-    return <main className="mx-auto max-w-4xl px-6 py-12 text-zinc-400">Loading…</main>;
+    return (
+      <main className="flex h-dvh items-center justify-center bg-black">
+        <video
+          src="/loading_animation.mp4"
+          className="h-40 w-40"
+          autoPlay
+          muted
+          loop
+          playsInline
+        />
+      </main>
+    );
   }
 
   const techStack = site.techStack ?? [];
@@ -322,12 +333,12 @@ export default function SitePage({
       {/* Breadcrumb */}
       <div className="flex items-center justify-between gap-3 text-sm">
         <div className="flex items-center gap-1.5">
-          <Link href="/" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-900">
+          <Link href="/" className="flex items-center gap-2 text-zinc-400 hover:text-white">
             <img src="/logovs.png" alt="Viewsource" className="h-6 w-6 rounded-md object-contain" />
             Viewsource
           </Link>
           <span className="text-zinc-300">/</span>
-          <span className="text-zinc-900">{site.name}</span>
+          <span className="text-zinc-100">{site.name}</span>
         </div>
         {CLERK_ENABLED && (
           <div className="flex items-center gap-2">
@@ -335,7 +346,7 @@ export default function SitePage({
               <UserButton />
             ) : (
               <SignInButton mode="modal">
-                <button className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-400">
+                <button className="rounded-lg border border-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-600">
                   Sign in
                 </button>
               </SignInButton>
@@ -347,12 +358,12 @@ export default function SitePage({
       {/* Header */}
       <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900">{site.name}</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-100">{site.name}</h1>
           <a
             href={site.sourceUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-1 inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-900"
+            className="mt-1 inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white"
           >
             {site.sourceUrl}
             <ExternalLinkIcon />
@@ -362,8 +373,8 @@ export default function SitePage({
 
       {/* Live preview of the deployed site */}
       {site.deployedUrl && (
-        <section className="mt-8 overflow-hidden rounded-xl border border-zinc-200 bg-white">
-          <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-3">
+        <section className="mt-8 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+          <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-3">
             <h2 className="text-xs font-medium uppercase tracking-widest text-zinc-400">
               Live preview
             </h2>
@@ -371,7 +382,7 @@ export default function SitePage({
               href={site.deployedUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-900"
+              className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white"
             >
               {site.deployedUrl}
               <ExternalLinkIcon />
@@ -383,11 +394,11 @@ export default function SitePage({
 
       {/* AI Analysis */}
       {site.description && (
-        <section className="mt-8 rounded-xl border border-zinc-200 bg-white p-5">
+        <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
           <h2 className="text-xs font-medium uppercase tracking-widest text-zinc-400">
             AI Analysis
           </h2>
-          <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-zinc-700">
+          <p className="mt-3 whitespace-pre-line text-[15px] leading-relaxed text-zinc-300">
             {site.description}
           </p>
         </section>
@@ -395,7 +406,7 @@ export default function SitePage({
 
       {/* Awwwards */}
       {awwwards && (
-        <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-5">
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xs font-medium uppercase tracking-widest text-zinc-400">
               Awwwards
@@ -404,7 +415,7 @@ export default function SitePage({
               href={awwwards.url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-900"
+              className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white"
             >
               View on awwwards.com
               <ExternalLinkIcon />
@@ -413,7 +424,7 @@ export default function SitePage({
 
           <div className="mt-3 flex flex-wrap items-center gap-3">
             {awwwards.award && (
-              <span className="rounded-full bg-zinc-900 px-3 py-1 text-xs font-medium text-white">
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-zinc-900">
                 🏆 {awwwards.award}
                 {awwwards.awardDate ? ` · ${awwwards.awardDate}` : ""}
               </span>
@@ -421,7 +432,7 @@ export default function SitePage({
           </div>
 
           {awwwards.description && (
-            <p className="mt-3 text-sm leading-relaxed text-zinc-600">
+            <p className="mt-3 text-sm leading-relaxed text-zinc-400">
               {awwwards.description}
             </p>
           )}
@@ -431,7 +442,7 @@ export default function SitePage({
               {awwwards.tags.map((t) => (
                 <span
                   key={t}
-                  className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-0.5 text-[11px] text-zinc-600"
+                  className="rounded-full border border-zinc-700 bg-zinc-800 px-2.5 py-0.5 text-[11px] text-zinc-400"
                 >
                   {t}
                 </span>
@@ -440,7 +451,7 @@ export default function SitePage({
           )}
 
           {awwwards.credits?.length > 0 && (
-            <p className="mt-3 text-xs text-zinc-500">
+            <p className="mt-3 text-xs text-zinc-400">
               Credits ·{" "}
               {awwwards.credits.map((c, i) => (
                 <span key={c.name}>
@@ -450,12 +461,12 @@ export default function SitePage({
                       href={c.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-zinc-700 underline-offset-2 hover:underline"
+                      className="text-zinc-300 underline-offset-2 hover:underline"
                     >
                       {c.name}
                     </a>
                   ) : (
-                    <span className="text-zinc-700">{c.name}</span>
+                    <span className="text-zinc-300">{c.name}</span>
                   )}
                 </span>
               ))}
@@ -475,7 +486,7 @@ export default function SitePage({
                   <img
                     src={g.imageUrl}
                     alt={g.label}
-                    className="h-28 w-44 rounded-lg border border-zinc-200 object-cover object-top transition hover:opacity-90"
+                    className="h-28 w-44 rounded-lg border border-zinc-800 object-cover object-top transition hover:opacity-90"
                   />
                   <p className="mt-1 text-center text-[10px] capitalize text-zinc-400">
                     {g.label}
@@ -490,7 +501,7 @@ export default function SitePage({
       {/* Tech stack + design */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {techStack.length > 0 && (
-          <section className="rounded-xl border border-zinc-200 bg-white p-5">
+          <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
             <h2 className="text-xs font-medium uppercase tracking-widest text-zinc-400">
               Tech stack
             </h2>
@@ -498,7 +509,7 @@ export default function SitePage({
               {techStack.map((t) => (
                 <span
                   key={t}
-                  className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 font-mono text-xs text-zinc-700"
+                  className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 font-mono text-xs text-zinc-300"
                 >
                   {t}
                 </span>
@@ -508,7 +519,7 @@ export default function SitePage({
         )}
 
         {(designInfo || site.screenshot) && (
-          <section className="rounded-xl border border-zinc-200 bg-white p-5">
+          <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
             <h2 className="text-xs font-medium uppercase tracking-widest text-zinc-400">
               Design
             </h2>
@@ -517,7 +528,7 @@ export default function SitePage({
                 href={site.screenshot}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-3 block overflow-hidden rounded-lg border border-zinc-200"
+                className="mt-3 block overflow-hidden rounded-lg border border-zinc-800"
               >
                 <img
                   src={site.screenshot}
@@ -531,7 +542,7 @@ export default function SitePage({
                 {designInfo.palette.map((c) => (
                   <span key={c} className="flex flex-col items-center gap-1 text-[10px] text-zinc-400">
                     <span
-                      className="inline-block h-7 w-7 rounded-full border border-zinc-200"
+                      className="inline-block h-7 w-7 rounded-full border border-zinc-700"
                       style={{ backgroundColor: c }}
                     />
                     {c}
@@ -540,19 +551,19 @@ export default function SitePage({
               </div>
             )}
             {designInfo?.fonts && designInfo.fonts.length > 0 && (
-              <p className="mt-3 text-xs text-zinc-500">
+              <p className="mt-3 text-xs text-zinc-400">
                 Fonts · {designInfo.fonts.join(", ")}
               </p>
             )}
             {designInfo?.notes && (
-              <p className="mt-2 text-xs leading-relaxed text-zinc-500">{designInfo.notes}</p>
+              <p className="mt-2 text-xs leading-relaxed text-zinc-400">{designInfo.notes}</p>
             )}
           </section>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="mt-8 flex gap-1 border-b border-zinc-200">
+      <div className="mt-8 flex gap-1 border-b border-zinc-800">
         {(
           [
             ["gallery", galleryLabel, galleryItems.length],
@@ -565,13 +576,13 @@ export default function SitePage({
             onClick={() => setTab(t)}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm transition ${
               tab === t
-                ? "border-b-2 border-zinc-900 font-medium text-zinc-900"
-                : "text-zinc-400 hover:text-zinc-700"
+                ? "border-b-2 border-zinc-100 font-medium text-zinc-100"
+                : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
             {label}
             {count !== null && (
-              <span className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-[11px] text-zinc-500">
+              <span className="rounded-full bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-400">
                 {count}
               </span>
             )}
@@ -590,7 +601,7 @@ export default function SitePage({
           {galleryItems.map((c) => (
             <div
               key={c.id}
-              className="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white"
+              className="flex flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900"
             >
               <div className="relative">
                 <ComponentCover component={c} />
@@ -601,8 +612,8 @@ export default function SitePage({
                 </span>
               </div>
               <div className="flex flex-1 flex-col p-4">
-                <span className="font-medium text-zinc-900">{c.name}</span>
-                <p className="mt-1.5 flex-1 text-xs leading-relaxed text-zinc-500">
+                <span className="font-medium text-zinc-100">{c.name}</span>
+                <p className="mt-1.5 flex-1 text-xs leading-relaxed text-zinc-400">
                   {c.description}
                 </p>
                 {c.sourcePath && (
@@ -614,7 +625,7 @@ export default function SitePage({
                   <CopyPromptButton endpoint={galleryEndpoint(c.id)} component={c} />
                   <button
                     onClick={() => setExtracting(c)}
-                    className="flex shrink-0 items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-zinc-700"
+                    className="flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-zinc-900 transition hover:bg-zinc-200"
                   >
                     {site.price && !site.unlocked && !c.code && <LockIcon />}
                     {c.code ? "View code" : "Get code"}
@@ -628,13 +639,13 @@ export default function SitePage({
 
       {/* Documents */}
       {tab === "documents" && (
-        <div className="mt-6 flex flex-col divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white">
+        <div className="mt-6 flex flex-col divide-y divide-zinc-800 rounded-xl border border-zinc-800 bg-zinc-900">
           {site.documents.map((d) => (
             <div key={d.id} className="flex items-center gap-3 px-4 py-3 text-sm">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-zinc-500">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-zinc-400">
                 {d.kind === "page" ? <PageIcon /> : <FileIcon />}
               </span>
-              <span className="flex-1 truncate font-mono text-xs text-zinc-700">{d.path}</span>
+              <span className="flex-1 truncate font-mono text-xs text-zinc-300">{d.path}</span>
               <span className="shrink-0 text-xs text-zinc-400">
                 {d.kind === "page" ? "page" : "source"}
               </span>
@@ -713,7 +724,7 @@ function CopyPromptButton({ endpoint, component }: { endpoint: string; component
     <button
       onClick={copyPrompt}
       disabled={state === "loading"}
-      className="flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:border-zinc-400 disabled:opacity-50"
+      className="flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-600 disabled:opacity-50"
     >
       <CopyIcon />
       {state === "loading"
@@ -845,20 +856,20 @@ function ExtractModal({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-zinc-200 bg-white"
+        className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-zinc-800 bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <h3 className="font-semibold text-zinc-900">{component.name}</h3>
+            <h3 className="font-semibold text-zinc-100">{component.name}</h3>
             <span
               className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${KIND_BADGE[component.kind]}`}
             >
               {component.kind}
             </span>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-zinc-400 hover:text-zinc-900">
+          <button onClick={onClose} className="rounded-lg p-1.5 text-zinc-400 hover:text-white">
             <CloseIcon />
           </button>
         </div>
@@ -868,8 +879,8 @@ function ExtractModal({
           {/* Output mode + extract */}
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-500">Output</label>
-              <div className="flex rounded-lg border border-zinc-200 p-0.5 text-sm w-fit">
+              <label className="text-xs font-medium text-zinc-400">Output</label>
+              <div className="flex rounded-lg border border-zinc-800 p-0.5 text-sm w-fit">
                 {(
                   [
                     ["code", "Code"],
@@ -881,8 +892,8 @@ function ExtractModal({
                     onClick={() => setMode(m)}
                     className={`rounded-md px-4 py-1.5 transition ${
                       mode === m
-                        ? "bg-white text-zinc-900 shadow-sm"
-                        : "text-zinc-400 hover:text-zinc-700"
+                        ? "bg-zinc-700 text-white shadow-sm"
+                        : "text-zinc-400 hover:text-zinc-200"
                     }`}
                   >
                     {label}
@@ -895,7 +906,7 @@ function ExtractModal({
               <button
                 onClick={extract}
                 disabled={loading}
-                className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-200 disabled:opacity-50"
               >
                 {loading
                   ? "Generating…"
@@ -908,7 +919,7 @@ function ExtractModal({
             {codeLocked &&
               (CLERK_ENABLED && !isSignedIn ? (
                 <SignInButton mode="modal">
-                  <button className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700">
+                  <button className="flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-200">
                     <LockIcon /> Sign in to unlock
                   </button>
                 </SignInButton>
@@ -916,7 +927,7 @@ function ExtractModal({
                 <button
                   onClick={unlock}
                   disabled={checkoutLoading}
-                  className="flex items-center gap-1.5 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-200 disabled:opacity-50"
                 >
                   <LockIcon />
                   {checkoutLoading
@@ -926,7 +937,7 @@ function ExtractModal({
               ))}
           </div>
 
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-zinc-400">
             {codeLocked
               ? "This component's code is part of the site's paid package: lifetime unlock, valid for ALL components of this site."
               : mode === "code"
@@ -934,7 +945,7 @@ function ExtractModal({
               : "Prompt for Claude Code, Cursor, or another LLM: recreates the component adapted to the host project's conventions."}
           </p>
 
-          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+          {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
 
           {loading && (
             <p className="mt-4 animate-pulse text-sm text-zinc-400">
@@ -953,8 +964,8 @@ function ExtractModal({
                       onClick={() => setActiveFilePath(f.path)}
                       className={`rounded-lg border px-2.5 py-1 font-mono text-[11px] transition ${
                         (activeFile?.path ?? bundleFiles[0].path) === f.path
-                          ? "border-zinc-900 bg-zinc-900 text-white"
-                          : "border-zinc-200 text-zinc-500 hover:border-zinc-400"
+                          ? "border-white bg-white text-zinc-900"
+                          : "border-zinc-800 text-zinc-400 hover:border-zinc-600"
                       }`}
                     >
                       {lastPathSegment(f.path)}
@@ -967,7 +978,7 @@ function ExtractModal({
                   <span className="font-mono text-xs text-zinc-400">{displayFilename}</span>
                   <button
                     onClick={copy}
-                    className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-2.5 py-1 text-xs text-zinc-300 hover:border-zinc-500"
+                    className="flex items-center gap-1.5 rounded-lg border border-zinc-700 px-2.5 py-1 text-xs text-zinc-300 hover:border-zinc-600"
                   >
                     <CopyIcon />
                     {copied ? "Copied" : "Copy"}
@@ -986,7 +997,7 @@ function ExtractModal({
                   {result.deps.map((d) => (
                     <span
                       key={d}
-                      className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-0.5 font-mono text-xs text-zinc-700"
+                      className="rounded-full border border-zinc-800 bg-zinc-900 px-2.5 py-0.5 font-mono text-xs text-zinc-300"
                     >
                       {d}
                     </span>
@@ -995,7 +1006,7 @@ function ExtractModal({
               )}
 
               {result.notes && (
-                <p className="mt-3 text-xs leading-relaxed text-zinc-500">
+                <p className="mt-3 text-xs leading-relaxed text-zinc-400">
                   {renderWithInlineCode(result.notes)}
                 </p>
               )}
@@ -1059,7 +1070,7 @@ function SiteChat({ slug }: { slug: string }) {
   }
 
   return (
-    <div className="mt-6 flex h-130 flex-col rounded-xl border border-zinc-200 bg-white">
+    <div className="mt-6 flex h-130 flex-col rounded-xl border border-zinc-800 bg-zinc-900">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-5">
         {messages.length === 0 && (
@@ -1075,8 +1086,8 @@ function SiteChat({ slug }: { slug: string }) {
               <div
                 className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-line ${
                   m.role === "user"
-                    ? "bg-zinc-900 text-white"
-                    : "bg-zinc-100 text-zinc-900"
+                    ? "bg-white text-zinc-900"
+                    : "bg-zinc-800 text-zinc-100"
                 }`}
               >
                 {renderWithInlineCode(m.content)}
@@ -1086,7 +1097,7 @@ function SiteChat({ slug }: { slug: string }) {
                   {m.sources.slice(0, 4).map((s) => (
                     <span
                       key={s}
-                      className="flex max-w-60 items-center gap-1 truncate rounded-full border border-zinc-200 px-2 py-0.5 text-[10px] text-zinc-500"
+                      className="flex max-w-60 items-center gap-1 truncate rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] text-zinc-400"
                       title={s}
                     >
                       <FileIcon />
@@ -1099,7 +1110,7 @@ function SiteChat({ slug }: { slug: string }) {
           ))}
 
           {loading && (
-            <div className="self-start rounded-2xl bg-zinc-100 px-4 py-2.5 text-sm text-zinc-500">
+            <div className="self-start rounded-2xl bg-zinc-800 px-4 py-2.5 text-sm text-zinc-400">
               <span className="animate-pulse">Searching the project…</span>
             </div>
           )}
@@ -1108,18 +1119,18 @@ function SiteChat({ slug }: { slug: string }) {
       </div>
 
       {/* Input */}
-      <div className="flex gap-2 border-t border-zinc-200 p-3">
+      <div className="flex gap-2 border-t border-zinc-800 p-3">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
           placeholder="Ask about this site…"
-          className="flex-1 rounded-full border border-zinc-200 px-4 py-2.5 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-400"
+          className="flex-1 rounded-full border border-zinc-800 px-4 py-2.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-zinc-600"
         />
         <button
           onClick={send}
           disabled={loading || !input.trim()}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white transition hover:bg-zinc-700 disabled:opacity-50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-zinc-900 transition hover:bg-zinc-200 disabled:opacity-50"
           aria-label="Send"
         >
           <ArrowUpIcon />

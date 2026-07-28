@@ -53,16 +53,16 @@ export default async function GalleryPage({
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-8">
       {/* Top bar */}
-      <div className="flex items-center justify-between border-b border-zinc-200 pb-4">
+      <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
         <Link href="/" className="flex items-center gap-2">
           <img src="/logovs.png" alt="Viewsource" className="h-7 w-7 rounded-md object-contain" />
-          <span className="font-semibold tracking-tight text-zinc-900">Viewsource</span>
+          <span className="font-semibold tracking-tight text-zinc-100">Viewsource</span>
         </Link>
       </div>
 
       {/* Hero */}
       <div className="mt-10">
-        <h1 className="text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl">
+        <h1 className="text-4xl font-bold tracking-tight text-zinc-100 sm:text-5xl">
           Recreate. Learn.{" "}
           <ShinyText
             text="Own the code."
@@ -73,7 +73,7 @@ export default async function GalleryPage({
             spread={110}
           />
         </h1>
-        <p className="mt-3 text-base text-zinc-500">
+        <p className="mt-3 text-base text-zinc-400">
           A curated gallery of notable sites: explore the AI analysis of each and
           extract components as code or prompts.
         </p>
@@ -83,14 +83,14 @@ export default async function GalleryPage({
             <GlobeIcon />
             Awwward winning websites
           </span>
-          <span className="hidden h-4 w-px bg-zinc-200 sm:block" />
+          <span className="hidden h-4 w-px bg-zinc-800 sm:block" />
           <span className="flex items-center gap-2">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
               <path d="M8 6l-6 6 6 6M16 6l6 6-6 6" />
             </svg>
             Access to code
           </span>
-          <span className="hidden h-4 w-px bg-zinc-200 sm:block" />
+          <span className="hidden h-4 w-px bg-zinc-800 sm:block" />
           <span className="flex items-center gap-2">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
               <rect x="5" y="11" width="14" height="9" rx="1.5" />
@@ -122,27 +122,27 @@ export default async function GalleryPage({
               <Link
                 key={s.id}
                 href={`/sites/${s.slug}`}
-                className="group overflow-hidden rounded-xl border border-zinc-200 bg-white transition hover:shadow-sm"
+                className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 transition hover:shadow-sm"
               >
                 {coverUrl ? (
                   <img
                     src={coverUrl}
                     alt={`${s.name} cover`}
-                    className="h-36 w-full border-b border-zinc-200 object-cover object-top"
+                    className="h-36 w-full border-b border-zinc-800 object-cover object-top"
                   />
                 ) : (
-                  <div className="flex h-36 w-full items-center justify-center border-b border-zinc-200 bg-linear-to-br from-zinc-50 to-zinc-100 text-zinc-300">
+                  <div className="flex h-36 w-full items-center justify-center border-b border-zinc-800 bg-linear-to-br from-zinc-900 to-zinc-800 text-zinc-600">
                     {s.sourceType === "git" ? <GitBranchIcon /> : <GlobeIcon />}
                   </div>
                 )}
 
                 <div className="p-4">
                   <div className="flex items-center gap-2">
-                    <span className="truncate font-medium text-zinc-900 group-hover:underline">
+                    <span className="truncate font-medium text-zinc-100 group-hover:underline">
                       {s.name}
                     </span>
                     {s.featured && (
-                      <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                      <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-400">
                         featured
                       </span>
                     )}
@@ -152,7 +152,7 @@ export default async function GalleryPage({
                       {techStack.slice(0, 4).map((t) => (
                         <span
                           key={t}
-                          className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 font-mono text-[10px] text-zinc-600"
+                          className="rounded-full border border-zinc-700 bg-zinc-800 px-2 py-0.5 font-mono text-[10px] text-zinc-400"
                         >
                           {t}
                         </span>

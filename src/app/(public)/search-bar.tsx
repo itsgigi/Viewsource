@@ -45,7 +45,7 @@ export function SearchBar({ defaultValue }: { defaultValue: string }) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Search sites, tech, keywords..."
-        className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-11 pr-11 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none focus:ring-2 focus:ring-zinc-100"
+        className="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-3 pl-11 pr-11 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-800"
       />
       {isPending && (
         <svg
